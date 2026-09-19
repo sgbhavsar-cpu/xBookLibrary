@@ -42,19 +42,19 @@
 **Independent Test**: Execute parser unit tests asserting that each format outputs a valid `ParsedBookPayload` with title, author, cover bytes, and TOC nodes.
 
 ### Tests for User Story 3
-- [ ] T011 [P] [US3] Unit tests for `EpubParser` in `tests/unit/parsers/test_epub_parser.py`.
-- [ ] T012 [P] [US3] Unit tests for `PdfParser` in `tests/unit/parsers/test_pdf_parser.py`.
-- [ ] T013 [P] [US3] Unit tests for `MobiParser` (MOBI & AZW3) in `tests/unit/parsers/test_mobi_parser.py`.
-- [ ] T014 [P] [US3] Unit tests for `ComicParser` (CBZ/CBR & ComicInfo.xml) in `tests/unit/parsers/test_comic_parser.py`.
-- [ ] T015 [P] [US3] Unit tests for `DocxParser` and `TextParser` in `tests/unit/parsers/test_docx_text_parser.py`.
+- [x] T011 [P] [US3] Unit tests for `EpubParser` in `tests/unit/parsers/test_epub_parser.py`.
+- [x] T012 [P] [US3] Unit tests for `PdfParser` in `tests/unit/parsers/test_pdf_parser.py`.
+- [x] T013 [P] [US3] Unit tests for `MobiParser` (MOBI & AZW3) in `tests/unit/parsers/test_mobi_parser.py`.
+- [x] T014 [P] [US3] Unit tests for `ComicParser` (CBZ/CBR & ComicInfo.xml) in `tests/unit/parsers/test_comic_parser.py`.
+- [x] T015 [P] [US3] Unit tests for `DocxParser` and `TextParser` in `tests/unit/parsers/test_docx_text_parser.py`.
 
 ### Implementation for User Story 3
-- [ ] T016 [P] [US3] Implement `EpubParser` using `ebooklib` + `lxml` in `backend/parsers/epub_parser.py`.
-- [ ] T017 [P] [US3] Implement `PdfParser` using `pypdf` + `pypdfium2` in `backend/parsers/pdf_parser.py`.
-- [ ] T018 [P] [US3] Implement `MobiParser` using PalmDOC & EXTH headers in `backend/parsers/mobi_parser.py`.
-- [ ] T019 [P] [US3] Implement `ComicParser` using `zipfile` & `ComicInfo.xml` in `backend/parsers/comic_parser.py`.
-- [ ] T020 [P] [US3] Implement `DocxParser` and `TextParser` in `backend/parsers/docx_parser.py` and `backend/parsers/text_parser.py`.
-- [ ] T021 [US3] Implement `ParserRegistry` factory in `backend/parsers/__init__.py` to auto-resolve parser strategy by file extension.
+- [x] T016 [P] [US3] Implement `EpubParser` using `ebooklib` + `lxml` in `backend/parsers/epub_parser.py`.
+- [x] T017 [P] [US3] Implement `PdfParser` using `pypdf` + `pypdfium2` in `backend/parsers/pdf_parser.py`.
+- [x] T018 [P] [US3] Implement `MobiParser` using PalmDOC & EXTH headers in `backend/parsers/mobi_parser.py`.
+- [x] T019 [P] [US3] Implement `ComicParser` using `zipfile` & `ComicInfo.xml` in `backend/parsers/comic_parser.py`.
+- [x] T020 [P] [US3] Implement `DocxParser` and `TextParser` in `backend/parsers/docx_parser.py` and `backend/parsers/text_parser.py`.
+- [x] T021 [US3] Implement `ParserRegistry` factory in `backend/parsers/__init__.py` to auto-resolve parser strategy by file extension.
 
 **Checkpoint**: All 7 format parsers passing unit tests with standardized payload extraction.
 
