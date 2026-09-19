@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
+
 import aiosqlite
 
 from backend.domain.entities import IngestionJob, IngestionStatus
@@ -87,9 +88,7 @@ class JobManager:
                         datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
                     ),
                     completed_at=(
-                        datetime.fromisoformat(row["completed_at"])
-                        if row["completed_at"]
-                        else None
+                        datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None
                     ),
                 )
 

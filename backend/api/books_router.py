@@ -4,9 +4,11 @@ import shutil
 import tempfile
 from pathlib import Path
 from typing import List, Optional
+
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
 from backend.config import ConfigManager
 from backend.domain.entities import Book
 from backend.services.calibre_sync import CalibreSyncService
@@ -65,7 +67,9 @@ async def get_book_cover(
     width: Optional[int] = Query(None, ge=16, le=2000),
     height: Optional[int] = Query(None, ge=16, le=2000),
 ):
-    """Streams the cover.jpg file for the requested book, with optional dynamic thumbnail resizing."""
+    """Streams the cover.jpg file for the requested book,
+    with optional dynamic thumbnail resizing.
+    """
     cfg_mgr = ConfigManager()
     active_lib = cfg_mgr.get_active_library()
     if not active_lib:
@@ -86,8 +90,9 @@ async def get_book_cover(
 
             if width or height:
                 import io
-                from PIL import Image
+
                 from fastapi.responses import Response
+                from PIL import Image
 
                 w = width or 150
                 h = height or 220
@@ -107,7 +112,9 @@ async def upload_books(files: List[UploadFile] = File(...)):
     cfg_mgr = ConfigManager()
     active_lib = cfg_mgr.get_active_library()
     if not active_lib:
-        raise HTTPException(status_code=400, detail="No active library configured to upload books into")
+        raise HTTPException(
+            status_code=400, detail="No active library configured to upload books into"
+        )
 
     ingestion_service = IngestionService(Path(active_lib.path))
     ingested_books: List[Book] = []

@@ -1,10 +1,12 @@
 """Unit tests for IngestionService deduplication and multi-format merging."""
 
-import pytest
 from pathlib import Path
-from tests.fixtures.generators import create_sample_epub, create_sample_pdf
-from backend.services.ingestion_service import IngestionService
+
+import pytest
+
 from backend.database.connection import DatabaseManager
+from backend.services.ingestion_service import IngestionService
+from tests.fixtures.generators import create_sample_epub, create_sample_pdf
 
 
 @pytest.mark.asyncio

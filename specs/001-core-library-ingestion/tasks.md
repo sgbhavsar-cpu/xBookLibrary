@@ -141,11 +141,11 @@
 **Independent Test**: Register two libraries via API, switch active library, and verify queries strictly isolate books to the active library.
 
 ### Tests for User Story 6
-- [ ] T040 [P] [US6] API contract test for `GET /api/libraries` and `POST /api/libraries` in `tests/contract/test_libraries_api.py`.
+- [x] T040 [P] [US6] API contract test for `GET /api/libraries` and `POST /api/libraries` in `tests/contract/test_libraries_api.py`.
 
 ### Implementation for User Story 6
-- [ ] T041 [US6] Implement library switching logic in `backend/services/library_manager.py`.
-- [ ] T042 [US6] Implement FastAPI `libraries_router.py` with `/api/libraries` and active library selection.
+- [x] T041 [US6] Implement library switching logic in `backend/services/library_manager.py`.
+- [x] T042 [US6] Implement FastAPI `libraries_router.py` with `/api/libraries` and active library selection.
 
 **Checkpoint**: Multiple libraries can be created and toggled dynamically with strict database isolation.
 
@@ -155,6 +155,6 @@
 
 **Purpose**: Code quality, test coverage, and documentation verification.
 
-- [ ] T043 Run `ruff check backend/ tests/` and `ruff format backend/ tests/` with zero lint issues.
-- [ ] T044 Execute complete Pytest suite (`pytest --cov=backend tests/`) asserting >85% coverage on core services and parsers.
-- [ ] T045 Execute and validate end-to-end user scenarios from `quickstart.md`.
+- [x] T043 Run `ruff check backend/ tests/` and `ruff format backend/ tests/` with zero lint issues.
+- [x] T044 Execute complete Pytest suite (`pytest --cov=backend tests/`) asserting >85% coverage on core services and parsers.
+- [x] T045 Execute and validate end-to-end user scenarios from `quickstart.md`.

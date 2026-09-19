@@ -1,7 +1,7 @@
 """Contract tests for books REST API endpoints."""
 
-import os
 from pathlib import Path
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 

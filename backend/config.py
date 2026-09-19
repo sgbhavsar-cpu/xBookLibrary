@@ -27,6 +27,7 @@ class ConfigManager:
 
     def __init__(self, config_dir: Optional[Path] = None):
         import os
+
         if config_dir is None:
             env_override = os.environ.get("XBOOKLIBRARY_CONFIG_DIR")
             if env_override:

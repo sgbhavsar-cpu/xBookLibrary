@@ -1,6 +1,7 @@
 """Integration tests for WatcherService and Jobs API."""
 
 from pathlib import Path
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 

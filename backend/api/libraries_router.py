@@ -1,10 +1,11 @@
 """FastAPI router for library registration, adoption, and switching."""
 
 from pathlib import Path
-from typing import List
+from typing import List, Optional
+
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
-from backend.config import ConfigManager
+
 from backend.domain.entities import Library
 from backend.services.library_manager import LibraryManager
 
@@ -23,6 +24,24 @@ async def list_libraries():
     """Lists all registered libraries."""
     lib_mgr = LibraryManager()
     return lib_mgr.list_libraries()
+
+
+@router.get("/active", response_model=Optional[Library])
+async def get_active_library():
+    """Returns the currently active library."""
+    lib_mgr = LibraryManager()
+    return lib_mgr.get_active_library()
+
+
+@router.get("/{library_id}", response_model=Library)
+async def get_library(library_id: str):
+    """Retrieve details for a specific library."""
+    lib_mgr = LibraryManager()
+    libs = lib_mgr.list_libraries()
+    target = next((lib for lib in libs if lib.id == library_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Library '{library_id}' not found")
+    return target
 
 
 @router.post("", response_model=Library, status_code=status.HTTP_201_CREATED)

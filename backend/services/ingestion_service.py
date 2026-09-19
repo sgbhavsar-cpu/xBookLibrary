@@ -5,7 +5,9 @@ import shutil
 import uuid
 from pathlib import Path
 from typing import Optional
+
 import aiosqlite
+
 from backend.domain.entities import Book, BookFormat, TocNode
 from backend.domain.parsers import ParsedBookPayload
 from backend.parsers import ParserRegistry
@@ -91,7 +93,14 @@ class IngestionService:
             else:
                 # Create brand new book
                 return await self._create_book(
-                    db, source_file, format_name, file_hash, file_size, payload, primary_author, title
+                    db,
+                    source_file,
+                    format_name,
+                    file_hash,
+                    file_size,
+                    payload,
+                    primary_author,
+                    title,
                 )
 
     async def _merge_format(
@@ -105,7 +114,9 @@ class IngestionService:
         payload: ParsedBookPayload,
     ) -> Book:
         """Attaches a new file format to an existing book record."""
-        async with db.execute("SELECT path, title, author_sort FROM books WHERE id = ?", (book_id,)) as cur:
+        async with db.execute(
+            "SELECT path, title, author_sort FROM books WHERE id = ?", (book_id,)
+        ) as cur:
             b_row = await cur.fetchone()
             rel_path = b_row["path"]
 
@@ -163,7 +174,9 @@ class IngestionService:
         title: str,
     ) -> Book:
         """Creates a new book record, Calibre directory structure, and metadata."""
-        rel_dir = self.storage.get_book_relative_dir(primary_author, title, payload.publication_year)
+        rel_dir = self.storage.get_book_relative_dir(
+            primary_author, title, payload.publication_year
+        )
         dest_dir = self.library_root / rel_dir
         dest_dir.mkdir(parents=True, exist_ok=True)
 
@@ -235,10 +248,18 @@ class IngestionService:
         for idx, toc_item in enumerate(payload.table_of_contents):
             await db.execute(
                 """
-                INSERT INTO x_toc_nodes (book_id, title, level, page_number, anchor_href, order_index)
+                INSERT INTO x_toc_nodes
+                (book_id, title, level, page_number, anchor_href, order_index)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (book_id, toc_item.title, toc_item.level, toc_item.page_number, toc_item.anchor_href, idx),
+                (
+                    book_id,
+                    toc_item.title,
+                    toc_item.level,
+                    toc_item.page_number,
+                    toc_item.anchor_href,
+                    idx,
+                ),
             )
 
         # Insert File Hash
@@ -275,16 +296,19 @@ class IngestionService:
 
     async def _get_book_by_id(self, db: aiosqlite.Connection, book_id: int) -> Book:
         async with db.execute(
-            "SELECT id, title, sort, pubdate, isbn, path, has_cover FROM books WHERE id = ?", (book_id,)
+            "SELECT id, title, sort, pubdate, isbn, path, has_cover FROM books WHERE id = ?",
+            (book_id,),
         ) as cur:
             b = await cur.fetchone()
 
         # Authors
         authors = []
-        async with db.execute(
-            "SELECT a.name FROM authors a JOIN books_authors_link bal ON a.id = bal.author WHERE bal.book = ?",
-            (book_id,),
-        ) as cur:
+        author_query = (
+            "SELECT a.name FROM authors a "
+            "JOIN books_authors_link bal ON a.id = bal.author "
+            "WHERE bal.book = ?"
+        )
+        async with db.execute(author_query, (book_id,)) as cur:
             for r in await cur.fetchall():
                 authors.append(r["name"])
 
@@ -309,10 +333,12 @@ class IngestionService:
 
         # Tags
         tags = []
-        async with db.execute(
-            "SELECT t.name FROM tags t JOIN books_tags_link btl ON t.id = btl.tag WHERE btl.book = ?",
-            (book_id,),
-        ) as cur:
+        tag_query = (
+            "SELECT t.name FROM tags t "
+            "JOIN books_tags_link btl ON t.id = btl.tag "
+            "WHERE btl.book = ?"
+        )
+        async with db.execute(tag_query, (book_id,)) as cur:
             for r in await cur.fetchall():
                 tags.append(r["name"])
 
@@ -325,10 +351,11 @@ class IngestionService:
 
         # TOC
         toc = []
-        async with db.execute(
-            "SELECT id, title, level, page_number, anchor_href, order_index FROM x_toc_nodes WHERE book_id = ? ORDER BY order_index",
-            (book_id,),
-        ) as cur:
+        toc_query = (
+            "SELECT id, title, level, page_number, anchor_href, order_index "
+            "FROM x_toc_nodes WHERE book_id = ? ORDER BY order_index"
+        )
+        async with db.execute(toc_query, (book_id,)) as cur:
             for r in await cur.fetchall():
                 toc.append(
                     TocNode(

@@ -5,6 +5,7 @@ import logging
 import uuid
 from pathlib import Path
 from typing import List, Optional, Set
+
 from watchfiles import Change, awatch
 
 from backend.domain.entities import IngestionJob, IngestionStatus
@@ -64,9 +65,7 @@ class WatcherService:
             # Wait briefly for file write completion if dropped recently
             await asyncio.sleep(0.1)
             book = await self.ingestion_service.ingest_file(file_path)
-            await self.job_manager.update_status(
-                job_id, IngestionStatus.COMPLETED, book_id=book.id
-            )
+            await self.job_manager.update_status(job_id, IngestionStatus.COMPLETED, book_id=book.id)
             job.status = IngestionStatus.COMPLETED
             job.book_id = book.id
         except Exception as e:

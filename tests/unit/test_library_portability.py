@@ -2,10 +2,9 @@
 
 import shutil
 from pathlib import Path
-import pytest
-from PIL import Image
 
-from backend.parsers.epub_parser import EpubParser
+import pytest
+
 from backend.services.calibre_sync import CalibreSyncService
 from backend.services.ingestion_service import IngestionService
 from backend.services.library_manager import LibraryManager
@@ -15,7 +14,9 @@ from tests.fixtures.generators import create_sample_epub
 
 @pytest.mark.asyncio
 async def test_library_relocation_portability(tmp_path: Path):
-    """Verifies that a library can be moved to a new path with all relative paths remaining intact."""
+    """Verifies that a library can be moved to a new path
+    with all relative paths remaining intact.
+    """
     initial_dir = tmp_path / "OriginalLibrary"
     lib_mgr = LibraryManager()
     await lib_mgr.create_new_library(initial_dir, name="Portable Library", set_active=False)
