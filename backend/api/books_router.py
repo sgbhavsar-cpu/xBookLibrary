@@ -60,8 +60,12 @@ async def get_book_detail(book_id: int):
 
 
 @router.get("/{book_id}/cover")
-async def get_book_cover(book_id: int):
-    """Streams the cover.jpg file for the requested book."""
+async def get_book_cover(
+    book_id: int,
+    width: Optional[int] = Query(None, ge=16, le=2000),
+    height: Optional[int] = Query(None, ge=16, le=2000),
+):
+    """Streams the cover.jpg file for the requested book, with optional dynamic thumbnail resizing."""
     cfg_mgr = ConfigManager()
     active_lib = cfg_mgr.get_active_library()
     if not active_lib:
@@ -79,6 +83,21 @@ async def get_book_cover(book_id: int):
             cover_path = Path(active_lib.path) / row["path"] / "cover.jpg"
             if not cover_path.exists():
                 raise HTTPException(status_code=404, detail="Cover file missing on disk")
+
+            if width or height:
+                import io
+                from PIL import Image
+                from fastapi.responses import Response
+
+                w = width or 150
+                h = height or 220
+                with Image.open(cover_path) as img:
+                    img = img.convert("RGB")
+                    img.thumbnail((w, h), Image.Resampling.LANCZOS)
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG", quality=85)
+                    return Response(content=buf.getvalue(), media_type="image/jpeg")
+
             return FileResponse(cover_path, media_type="image/jpeg")
 
 

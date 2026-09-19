@@ -106,11 +106,11 @@
 **Independent Test**: Relocate a library directory to a new temporary path, update registry, and verify that all book files, covers, and formats load seamlessly.
 
 ### Tests for User Story 4
-- [ ] T033 [P] [US4] Test library folder relocation and relative path resolution in `tests/unit/test_library_portability.py`.
+- [x] T033 [P] [US4] Test library folder relocation and relative path resolution in `tests/unit/test_library_portability.py`.
 
 ### Implementation for User Story 4
-- [ ] T034 [US4] Implement relative path resolution and portability verification in `backend/services/storage_service.py`.
-- [ ] T035 [US4] Implement cover streaming and thumbnail generation endpoint (`GET /api/books/{id}/cover`) in `backend/api/books_router.py`.
+- [x] T034 [US4] Implement relative path resolution and portability verification in `backend/services/storage_service.py`.
+- [x] T035 [US4] Implement cover streaming and thumbnail generation endpoint (`GET /api/books/{id}/cover`) in `backend/api/books_router.py`.
 
 **Checkpoint**: Library folders can be moved to any disk location or machine without breaking references.
 

@@ -41,6 +41,14 @@ class StorageService:
     def get_book_absolute_dir(self, relative_dir: str) -> Path:
         return self.library_root / Path(relative_dir)
 
+    def resolve_book_path(self, relative_path: str) -> Path:
+        """Resolves relative Calibre path against the current library root."""
+        return self.library_root / Path(relative_path)
+
+    def resolve_format_path(self, relative_path: str, format_name: str, name: str) -> Path:
+        """Resolves full path to a specific format file."""
+        return self.resolve_book_path(relative_path) / f"{name}.{format_name.lower()}"
+
     def save_cover_image(
         self, book_dir: Path, image_bytes: bytes, max_dimension: int = 1200
     ) -> bool:
