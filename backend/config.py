@@ -1,0 +1,78 @@
+"""Global configuration and library registry manager."""
+
+import json
+from pathlib import Path
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
+from backend.domain.entities import Library
+
+
+class UserPreferences(BaseModel):
+    theme: str = "dark"
+    default_page_size: int = 50
+    gemini_api_key: Optional[str] = None
+    ollama_endpoint: str = "http://localhost:11434"
+
+
+class AppConfig(BaseModel):
+    active_library_id: Optional[str] = None
+    libraries: List[Library] = Field(default_factory=list)
+    preferences: UserPreferences = Field(default_factory=UserPreferences)
+
+
+class ConfigManager:
+    """Manages the persistence of ~/.xbooklibrary/config.json."""
+
+    def __init__(self, config_dir: Optional[Path] = None):
+        if config_dir is None:
+            config_dir = Path.home() / ".xbooklibrary"
+        self.config_dir = config_dir
+        self.config_file = self.config_dir / "config.json"
+        self._ensure_config_file()
+
+    def _ensure_config_file(self) -> None:
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        if not self.config_file.exists():
+            default_config = AppConfig()
+            self.save(default_config)
+
+    def load(self) -> AppConfig:
+        try:
+            with open(self.config_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return AppConfig.model_validate(data)
+        except Exception:
+            return AppConfig()
+
+    def save(self, config: AppConfig) -> None:
+        with open(self.config_file, "w", encoding="utf-8") as f:
+            f.write(config.model_dump_json(indent=2))
+
+    def get_active_library(self) -> Optional[Library]:
+        config = self.load()
+        if not config.active_library_id:
+            return config.libraries[0] if config.libraries else None
+        for lib in config.libraries:
+            if lib.id == config.active_library_id:
+                return lib
+        return config.libraries[0] if config.libraries else None
+
+    def register_library(self, library: Library, set_active: bool = True) -> Library:
+        config = self.load()
+        # Check if already registered
+        existing = [
+            lib for lib in config.libraries if lib.id == library.id or lib.path == library.path
+        ]
+        if not existing:
+            config.libraries.append(library)
+        else:
+            # Update existing
+            for idx, lib in enumerate(config.libraries):
+                if lib.id == library.id or lib.path == library.path:
+                    config.libraries[idx] = library
+        if set_active:
+            config.active_library_id = library.id
+        self.save(config)
+        return library

@@ -61,8 +61,8 @@ Operating systems (especially Windows) restrict certain characters: `\ / : * ? "
 - Filename Sanitizer:
   ```python
   def sanitize_filename(name: str, max_length: int = 120) -> str:
-      clean = re.sub(r'[\\/*?:"<>|]', '_', name).strip()
-      clean = re.sub(r'\s+', ' ', clean)
+      clean = re.sub(r'[\\/*?:"<>|]', "_", name).strip()
+      clean = re.sub(r"\s+", " ", clean)
       return clean[:max_length]
   ```
 - Folder Hierarchy:

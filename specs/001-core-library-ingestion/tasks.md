@@ -11,10 +11,10 @@
 
 **Purpose**: Project initialization, directory structure, and dependency management with `uv`.
 
-- [ ] T001 Initialize Python project layout with `backend/` and `tests/` directories per plan.md.
-- [ ] T002 Create `pyproject.toml` with `uv` configuring FastAPI, Uvicorn, SQLAlchemy 2.0, Pydantic v2, `watchfiles`, `ebooklib`, `pypdf`, `pypdfium2`, `python-docx`, `pytest`, and `ruff`.
-- [ ] T003 [P] Configure Ruff linting and formatting configuration in `pyproject.toml`.
-- [ ] T004 [P] Create `tests/conftest.py` with reusable test fixtures (temporary directories, sample mock files).
+- [x] T001 Initialize Python project layout with `backend/` and `tests/` directories per plan.md.
+- [x] T002 Create `pyproject.toml` with `uv` configuring FastAPI, Uvicorn, SQLAlchemy 2.0, Pydantic v2, `watchfiles`, `ebooklib`, `pypdf`, `pypdfium2`, `python-docx`, `pytest`, and `ruff`.
+- [x] T003 [P] Configure Ruff linting and formatting configuration in `pyproject.toml`.
+- [x] T004 [P] Create `tests/conftest.py` with reusable test fixtures (temporary directories, sample mock files).
 
 ---
 
@@ -24,12 +24,12 @@
 
 **CRITICAL**: No user story implementation can proceed until this foundation is in place.
 
-- [ ] T005 Implement domain entity models in `backend/domain/entities.py` (Book, Author, BookFormat, Identifier, TocNode, IngestionJob).
-- [ ] T006 [P] Implement abstract parser contracts and payload dataclasses in `backend/domain/parsers.py` (`BookParserStrategy`, `ParsedBookPayload`, `TocItem`).
-- [ ] T007 Implement global application configuration and library registry manager in `backend/config.py` (`~/.xbooklibrary/config.json`).
-- [ ] T008 Implement dynamic per-library SQLite engine and session factory in `backend/database/connection.py`.
-- [ ] T009 Implement Calibre standard table DDL and `x_` extension tables (`x_toc_nodes`, `x_file_hashes`, `x_ingestion_jobs`) in `backend/database/schema.py`.
-- [ ] T010 Implement filesystem path sanitization and Calibre directory layout generator in `backend/services/storage_service.py`.
+- [x] T005 Implement domain entity models in `backend/domain/entities.py` (Book, Author, BookFormat, Identifier, TocNode, IngestionJob).
+- [x] T006 [P] Implement abstract parser contracts and payload dataclasses in `backend/domain/parsers.py` (`BookParserStrategy`, `ParsedBookPayload`, `TocItem`).
+- [x] T007 Implement global application configuration and library registry manager in `backend/config.py` (`~/.xbooklibrary/config.json`).
+- [x] T008 Implement dynamic per-library SQLite engine and session factory in `backend/database/connection.py`.
+- [x] T009 Implement Calibre standard table DDL and `x_` extension tables (`x_toc_nodes`, `x_file_hashes`, `x_ingestion_jobs`) in `backend/database/schema.py`.
+- [x] T010 Implement filesystem path sanitization and Calibre directory layout generator in `backend/services/storage_service.py`.
 
 **Checkpoint**: Foundation ready — database schema, domain models, and storage utilities verified with unit tests.
 
