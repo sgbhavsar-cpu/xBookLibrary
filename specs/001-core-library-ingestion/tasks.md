@@ -67,13 +67,13 @@
 **Independent Test**: Point `LibraryManager` to an existing Calibre test directory; verify all books and metadata are immediately accessible without moving or altering any files.
 
 ### Tests for User Story 2
-- [ ] T022 [P] [US2] Unit test for Calibre `metadata.db` schema introspection and validation in `tests/unit/test_calibre_introspection.py`.
-- [ ] T023 [P] [US2] Integration test for adopting an existing Calibre library in `tests/integration/test_calibre_adoption.py`.
+- [x] T022 [P] [US2] Unit test for Calibre `metadata.db` schema introspection and validation in `tests/unit/test_calibre_introspection.py`.
+- [x] T023 [P] [US2] Integration test for adopting an existing Calibre library in `tests/integration/test_calibre_adoption.py`.
 
 ### Implementation for User Story 2
-- [ ] T024 [US2] Implement Calibre schema introspection and migration validator in `backend/services/calibre_sync.py`.
-- [ ] T025 [US2] Implement in-place library adoption routine in `backend/services/library_manager.py`.
-- [ ] T026 [US2] Implement `.vectors/` directory initialization and `x_` table registration in `backend/services/library_manager.py`.
+- [x] T024 [US2] Implement Calibre schema introspection and migration validator in `backend/services/calibre_sync.py`.
+- [x] T025 [US2] Implement in-place library adoption routine in `backend/services/library_manager.py`.
+- [x] T026 [US2] Implement `.vectors/` directory initialization and `x_` table registration in `backend/services/library_manager.py`.
 
 **Checkpoint**: Existing Calibre libraries can be adopted in place in under 5 seconds with zero file modifications.
 

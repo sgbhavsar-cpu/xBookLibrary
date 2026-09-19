@@ -263,3 +263,127 @@ def create_sample_mobi(
     full_data = bytes(header) + bytes(rec_0)
     file_path.write_bytes(full_data)
     return file_path
+
+
+def create_mock_calibre_library(library_dir: Path) -> Path:
+    """Creates a simulated pre-existing Calibre library on disk with metadata.db."""
+    import sqlite3
+
+    library_dir.mkdir(parents=True, exist_ok=True)
+    db_path = library_dir / "metadata.db"
+
+    conn = sqlite3.connect(db_path)
+    # Calibre standard tables only (no x_ extension tables)
+    conn.executescript("""
+    CREATE TABLE books (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        sort TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        pubdate DATETIME,
+        series_index REAL DEFAULT 1.0,
+        author_sort TEXT,
+        isbn TEXT,
+        lccn TEXT,
+        path TEXT NOT NULL,
+        flags INTEGER DEFAULT 1,
+        uuid TEXT UNIQUE,
+        has_cover INTEGER DEFAULT 1,
+        last_modified DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE authors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        sort TEXT,
+        link TEXT DEFAULT ''
+    );
+    CREATE TABLE books_authors_link (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        book INTEGER NOT NULL,
+        author INTEGER NOT NULL,
+        UNIQUE(book, author)
+    );
+    CREATE TABLE data (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        book INTEGER NOT NULL,
+        format TEXT NOT NULL,
+        uncompressed_size INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        UNIQUE(book, format)
+    );
+    CREATE TABLE identifiers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        book INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        val TEXT NOT NULL,
+        UNIQUE(book, type)
+    );
+    CREATE TABLE tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE
+    );
+    CREATE TABLE books_tags_link (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        book INTEGER NOT NULL,
+        tag INTEGER NOT NULL,
+        UNIQUE(book, tag)
+    );
+    """)
+
+    # Insert sample authors
+    conn.execute("INSERT INTO authors (name, sort) VALUES ('Isaac Asimov', 'Asimov, Isaac')")
+    conn.execute("INSERT INTO authors (name, sort) VALUES ('William Gibson', 'Gibson, William')")
+
+    # Insert sample books
+    conn.execute("""
+    INSERT INTO books (id, title, sort, author_sort, isbn, path, has_cover)
+    VALUES (1, 'Foundation', 'Foundation', 'Asimov, Isaac', '9780553293357',
+            'Isaac Asimov/Foundation (1951)', 1)
+    """)
+    conn.execute("""
+    INSERT INTO books (id, title, sort, author_sort, isbn, path, has_cover)
+    VALUES (2, 'Neuromancer', 'Neuromancer', 'Gibson, William', '9780441569595',
+            'William Gibson/Neuromancer (1984)', 1)
+    """)
+
+    # Link authors
+    conn.execute("INSERT INTO books_authors_link (book, author) VALUES (1, 1)")
+    conn.execute("INSERT INTO books_authors_link (book, author) VALUES (2, 2)")
+
+    # Formats
+    conn.execute(
+        "INSERT INTO data (book, format, uncompressed_size, name) "
+        "VALUES (1, 'EPUB', 250000, 'Foundation - Isaac Asimov')"
+    )
+    conn.execute(
+        "INSERT INTO data (book, format, uncompressed_size, name) "
+        "VALUES (1, 'PDF', 1200000, 'Foundation - Isaac Asimov')"
+    )
+    conn.execute(
+        "INSERT INTO data (book, format, uncompressed_size, name) "
+        "VALUES (2, 'EPUB', 310000, 'Neuromancer - William Gibson')"
+    )
+
+    # Tags
+    conn.execute("INSERT INTO tags (name) VALUES ('Sci-Fi')")
+    conn.execute("INSERT INTO tags (name) VALUES ('Cyberpunk')")
+    conn.execute("INSERT INTO books_tags_link (book, tag) VALUES (1, 1)")
+    conn.execute("INSERT INTO books_tags_link (book, tag) VALUES (2, 1)")
+    conn.execute("INSERT INTO books_tags_link (book, tag) VALUES (2, 2)")
+
+    conn.commit()
+    conn.close()
+
+    # Create directory files on disk
+    book1_dir = library_dir / "Isaac Asimov" / "Foundation (1951)"
+    book1_dir.mkdir(parents=True, exist_ok=True)
+    (book1_dir / "cover.jpg").write_bytes(create_sample_cover_bytes(color="blue"))
+    (book1_dir / "Foundation - Isaac Asimov.epub").write_bytes(b"dummy-epub-bytes")
+    (book1_dir / "Foundation - Isaac Asimov.pdf").write_bytes(b"dummy-pdf-bytes")
+
+    book2_dir = library_dir / "William Gibson" / "Neuromancer (1984)"
+    book2_dir.mkdir(parents=True, exist_ok=True)
+    (book2_dir / "cover.jpg").write_bytes(create_sample_cover_bytes(color="green"))
+    (book2_dir / "Neuromancer - William Gibson.epub").write_bytes(b"dummy-epub-bytes")
+
+    return library_dir
