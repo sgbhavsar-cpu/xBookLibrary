@@ -86,14 +86,14 @@
 **Independent Test**: Upload EPUB, PDF, and alternate formats of the same book via the API; verify they are saved to disk in the Calibre layout and recorded in SQLite with deduplication and format merging.
 
 ### Tests for User Story 1
-- [ ] T027 [P] [US1] Unit test for SHA-256 byte deduplication and multi-format merging in `tests/unit/test_format_merging.py`.
-- [ ] T028 [P] [US1] API contract test for `POST /api/books/upload` and `GET /api/books/{id}` in `tests/contract/test_books_api.py`.
+- [x] T027 [P] [US1] Unit test for SHA-256 byte deduplication and multi-format merging in `tests/unit/test_format_merging.py`.
+- [x] T028 [P] [US1] API contract test for `POST /api/books/upload` and `GET /api/books/{id}` in `tests/contract/test_books_api.py`.
 
 ### Implementation for User Story 1
-- [ ] T029 [US1] Implement `IngestionService` in `backend/services/ingestion_service.py` to coordinate file hashing, parser execution, cover saving, and OPF creation.
-- [ ] T030 [US1] Implement smart multi-format deduplication logic in `backend/services/ingestion_service.py` (attaching new format to existing book record).
-- [ ] T031 [US1] Implement `metadata.opf` XML builder in `backend/services/storage_service.py`.
-- [ ] T032 [US1] Implement FastAPI `books_router.py` with `/api/books`, `/api/books/{id}`, and `/api/books/upload`.
+- [x] T029 [US1] Implement `IngestionService` in `backend/services/ingestion_service.py` to coordinate file hashing, parser execution, cover saving, and OPF creation.
+- [x] T030 [US1] Implement smart multi-format deduplication logic in `backend/services/ingestion_service.py` (attaching new format to existing book record).
+- [x] T031 [US1] Implement `metadata.opf` XML builder in `backend/services/storage_service.py`.
+- [x] T032 [US1] Implement FastAPI `books_router.py` with `/api/books`, `/api/books/{id}`, and `/api/books/upload`.
 
 **Checkpoint**: End-to-end book upload, parsing, Calibre storage, and retrieval fully functional.
 

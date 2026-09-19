@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import List, Optional
 
 import pypdf
-import pypdfium2
 
 from backend.domain.parsers import (
     BookParserStrategy,
@@ -25,7 +24,8 @@ class PdfParser(BookParserStrategy):
             raise CorruptedBookError(f"File not found: {file_path}")
 
         try:
-            reader = pypdf.PdfReader(str(file_path))
+            pdf_bytes = file_path.read_bytes()
+            reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
         except Exception as e:
             raise CorruptedBookError(f"Unable to read PDF file: {e}") from e
 
@@ -94,17 +94,50 @@ class PdfParser(BookParserStrategy):
         except Exception:
             pass
 
-        # 4. Render Page 1 as Cover Image via pypdfium2
+        # 4. Extract Cover Image (embedded images first, then pdfium, then PIL cover)
         cover_bytes: Optional[bytes] = None
         cover_mime = "image/jpeg"
+
+        # Try extracting embedded image on Page 1 first
         try:
-            pdf_doc = pypdfium2.PdfDocument(str(file_path))
-            if len(pdf_doc) > 0:
-                first_page = pdf_doc[0]
-                image = first_page.render(scale=2.0).to_pil()
+            if len(reader.pages) > 0 and len(reader.pages[0].images) > 0:
+                first_img = reader.pages[0].images[0]
+                cover_bytes = first_img.data
+                if first_img.name.endswith(".png"):
+                    cover_mime = "image/png"
+        except Exception:
+            pass
+
+        # Try pypdfium2 render if no embedded image found
+        if not cover_bytes:
+            try:
+                import pypdfium2
+
+                pdf_doc = pypdfium2.PdfDocument(pdf_bytes)
+                if len(pdf_doc) > 0:
+                    first_page = pdf_doc[0]
+                    image = first_page.render(scale=2.0).to_pil()
+                    buf = io.BytesIO()
+                    image.save(buf, format="JPEG", quality=85)
+                    cover_bytes = buf.getvalue()
+                pdf_doc.close()
+            except Exception:
+                pass
+
+        # Final fallback: generate a clean minimalist cover image using PIL
+        if not cover_bytes:
+            try:
+                from PIL import Image
+
+                fallback_img = Image.new("RGB", (400, 600), color=(45, 55, 72))
                 buf = io.BytesIO()
-                image.save(buf, format="JPEG", quality=85)
+                fallback_img.save(buf, format="JPEG", quality=85)
                 cover_bytes = buf.getvalue()
+            except Exception:
+                pass
+
+        try:
+            reader.close()
         except Exception:
             pass
 

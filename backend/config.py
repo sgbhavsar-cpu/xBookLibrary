@@ -26,8 +26,13 @@ class ConfigManager:
     """Manages the persistence of ~/.xbooklibrary/config.json."""
 
     def __init__(self, config_dir: Optional[Path] = None):
+        import os
         if config_dir is None:
-            config_dir = Path.home() / ".xbooklibrary"
+            env_override = os.environ.get("XBOOKLIBRARY_CONFIG_DIR")
+            if env_override:
+                config_dir = Path(env_override)
+            else:
+                config_dir = Path.home() / ".xbooklibrary"
         self.config_dir = config_dir
         self.config_file = self.config_dir / "config.json"
         self._ensure_config_file()
