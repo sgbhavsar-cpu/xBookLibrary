@@ -3,7 +3,7 @@
 **Feature Branch**: `001-core-library-ingestion`  
 **Created**: 2026-09-20  
 **Status**: Draft  
-**Input**: User description: "Core Library Model, Calibre Storage and Multi-Format Ingestion Strategy"
+**Input**: User description: "Core Library Model, Calibre Storage, In-Place Calibre Library Adoption, and Multi-Format Ingestion Strategy"
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -22,7 +22,21 @@ As a reader and digital book collector, I want to upload book files in various f
 
 ---
 
-### User Story 2 - Pluggable Parser Strategy across Full Format Suite (Priority: P1)
+### User Story 2 - Existing Calibre Library In-Place Adoption & Sync (Priority: P1)
+
+As a user with an established Calibre library (containing hundreds or thousands of books), I want to point xBookLibrary to my existing Calibre library folder so that it immediately discovers, adopts, and syncs all books, authors, series, tags, and covers in place without re-copying or modifying existing files.
+
+**Why this priority**: Eliminates adoption friction for existing Calibre users by providing instant zero-copy migration, allowing users to keep their existing files and tools while unlocking xBookLibrary's AI capabilities.
+
+**Independent Test**: Point xBookLibrary to an existing Calibre library folder with 50+ books and an existing `metadata.db`, verifying that all books, covers, authors, series, and formats load into xBookLibrary within seconds without any file moves or corruption.
+
+**Acceptance Scenarios**:
+1. **Given** a directory containing a valid Calibre `metadata.db` and book subdirectories, **When** registered via the library manager, **Then** xBookLibrary introspects the schema, verifies compatibility, imports the records in place, creates the `.vectors/` directory, and serves the entire catalog instantly.
+2. **Given** an existing Calibre library adopted in place, **When** new books are added or metadata is updated in xBookLibrary, **Then** the updates are reflected in `metadata.db` and `metadata.opf` files while maintaining 100% backward compatibility with standard Calibre installations.
+
+---
+
+### User Story 3 - Pluggable Parser Strategy across Full Format Suite (Priority: P1)
 
 As a developer and system operator, I want all book parsers to adhere to a unified, pluggable `BookParserStrategy` interface so that every supported format delivers a standardized metadata and content payload.
 
@@ -39,9 +53,9 @@ As a developer and system operator, I want all book parsers to adhere to a unifi
 
 ---
 
-### User Story 3 - Calibre-Compatible Portable Storage & Deterministic Layout (Priority: P2)
+### User Story 4 - Calibre-Compatible Portable Storage & Deterministic Layout (Priority: P2)
 
-As a user with existing Calibre libraries or multiple reading devices, I want the storage layout and database to follow Calibre's portable folder structure so that my library remains 100% self-contained, backed up, or openable by other tooling.
+As a user with multiple reading devices or backup routines, I want the storage layout and database to follow Calibre's portable folder structure so that my library remains 100% self-contained, backed up, or openable by other tooling.
 
 **Why this priority**: Ensures long-term data ownership, zero vendor lock-in, and instant compatibility with existing e-reader tools.
 
@@ -53,7 +67,7 @@ As a user with existing Calibre libraries or multiple reading devices, I want th
 
 ---
 
-### User Story 4 - Automated Directory Watcher & Bulk Import Scanner (Priority: P2)
+### User Story 5 - Automated Directory Watcher & Bulk Import Scanner (Priority: P2)
 
 As a power user, I want to designate an "Auto-Import" watch folder or scan an unorganized folder of books so that bulk collections are ingested in the background with real-time job progress.
 
@@ -62,12 +76,12 @@ As a power user, I want to designate an "Auto-Import" watch folder or scan an un
 **Independent Test**: Drop 20 ebook files into the designated auto-import directory, and assert that the file system watcher detects them, enqueues ingestion jobs, extracts metadata, and moves files into the library.
 
 **Acceptance Scenarios**:
-1. **Given** a directory designated as an Auto-Import folder, **When** new book files are added, **Then** the background watcher detects them, waits for file write completion, triggers the ingestion pipeline, and removes/archives the file from the intake folder.
+1. **Given** a directory designated as an Auto-Import folder, **When** new book files are added, **Then** the background watcher detects them, waits for file write completion, triggers the ingestion pipeline, and moves the file into the library structure.
 2. **Given** a bulk import job of 50 books, **When** processing, **Then** the system emits WebSocket progress events indicating current file, completed count, and error reports for any unreadable files.
 
 ---
 
-### User Story 5 - Multi-Library Registry & Switcher (Priority: P3)
+### User Story 6 - Multi-Library Registry & Switcher (Priority: P3)
 
 As a reader with multiple library collections (e.g. "Technical & Research", "Fiction & Sci-Fi", "Comics"), I want to create and switch between distinct isolated libraries.
 
@@ -88,6 +102,7 @@ As a reader with multiple library collections (e.g. "Technical & Research", "Fic
 - **Path Length & Special Characters**: Authors or titles containing characters illegal in Windows/Linux filesystems (`:`, `?`, `\`, `/`, `*`, `"`, `<`, `>`, `|`) or exceeding 240 characters MUST be sanitized deterministically while preserving original UTF-8 strings in the SQLite database.
 - **Collision on Unknown Title/Author**: If multiple books with unknown metadata are imported simultaneously, the system MUST use UUID or file hash suffixes to prevent accidental file overwrites on disk.
 - **Large Files (>500MB)**: PDF manuals or high-res comic archives MUST be processed using streaming I/O rather than loading the entire file into memory at once.
+- **Existing Calibre Schema Version Differences**: Calibre `metadata.db` schema has evolved across versions; the introspection engine MUST verify essential tables (`books`, `authors`, `data`, `identifiers`) and handle missing optional columns gracefully.
 
 ---
 
@@ -97,13 +112,14 @@ As a reader with multiple library collections (e.g. "Technical & Research", "Fic
 
 - **FR-001**: System MUST provide a `LibraryManager` service that maintains a central registry of library paths in local application configuration (`~/.xbooklibrary/config.json`).
 - **FR-002**: System MUST initialize a standard SQLite `metadata.db` schema inside each library root upon creation or first connection.
-- **FR-003**: System MUST define and enforce a `BookParserStrategy` interface with concrete implementations:
+- **FR-003**: System MUST support in-place adoption of existing Calibre library folders by reading the existing `metadata.db`, mapping existing books, authors, series, and tags without re-copying files, and creating `.vectors/`.
+- **FR-004**: System MUST define and enforce a `BookParserStrategy` interface with concrete implementations:
   - `EpubParser` (using `ebooklib` / `zipfile` / `lxml`)
   - `PdfParser` (using `pypdf` / `pdfplumber` / `fitz`)
   - `MobiParser` (using `mobi` unpacker)
   - `ComicParser` (using `zipfile` / `rarfile` and `xml.etree`)
   - `DocxTextParser` (using `python-docx` and native text readers)
-- **FR-004**: Each parser MUST return a standardized `ParsedBookPayload` containing:
+- **FR-005**: Each parser MUST return a standardized `ParsedBookPayload` containing:
   - Title (string)
   - Authors (list of strings)
   - Identifiers (dict: ISBN-10, ISBN-13, DOI, ASIN, etc.)
@@ -114,24 +130,24 @@ As a reader with multiple library collections (e.g. "Technical & Research", "Fic
   - Cover Image (binary bytes and mime type)
   - Text Sample (first ~2,000 words for downstream agent processing)
   - Language (optional string)
-- **FR-005**: System MUST store books on disk using the deterministic Calibre folder structure:  
+- **FR-006**: System MUST store newly imported books on disk using the deterministic Calibre folder structure:  
   `<LibraryRoot>/<CleanAuthor>/<CleanTitle> (<Year>)/<CleanTitle> - <CleanAuthor>.<ext>`.
-- **FR-006**: System MUST extract and persist `cover.jpg` (optimized JPEG, max 1200px dimension) in the book's directory and store a thumbnail reference in the database.
-- **FR-007**: System MUST generate and keep updated a standard Calibre `metadata.opf` XML file in the book directory.
-- **FR-008**: System MUST implement multi-format merging: when an imported file matches an existing book record by ISBN or normalized Title + Primary Author, the file is added to `book_formats` under that existing book.
-- **FR-009**: System MUST provide REST API endpoints (FastAPI):
+- **FR-007**: System MUST extract and persist `cover.jpg` (optimized JPEG, max 1200px dimension) in the book's directory and store a thumbnail reference in the database.
+- **FR-008**: System MUST generate and keep updated a standard Calibre `metadata.opf` XML file in the book directory.
+- **FR-009**: System MUST implement multi-format merging: when an imported file matches an existing book record by ISBN or normalized Title + Primary Author, the file is added to `book_formats` under that existing book.
+- **FR-010**: System MUST provide REST API endpoints (FastAPI):
   - `GET /api/libraries` — List all registered libraries
-  - `POST /api/libraries` — Create or register a library
+  - `POST /api/libraries` — Create a new library or adopt an existing Calibre library path
   - `GET /api/books` — List books with pagination, search, and sorting
   - `GET /api/books/{id}` — Get book details, formats, TOC, and cover URL
   - `POST /api/books/upload` — Upload single or multiple book files
   - `GET /api/jobs/{job_id}` — Inspect ingestion job status and logs
-- **FR-010**: System MUST provide a background `DirectoryWatcher` service that monitors designated intake folders and processes incoming files asynchronously.
-- **FR-011**: System MUST compute and store SHA-256 hashes of all ingested files to prevent accidental byte-identical re-ingestion.
+- **FR-011**: System MUST provide a background `DirectoryWatcher` service that monitors designated intake folders and processes incoming files asynchronously.
+- **FR-012**: System MUST compute and store SHA-256 hashes of all ingested files to prevent accidental byte-identical re-ingestion.
 
 ### Key Entities
 
-- **Library**: Represents a self-contained book repository. Attributes: `id`, `name`, `path`, `created_at`, `book_count`.
+- **Library**: Represents a self-contained book repository. Attributes: `id`, `name`, `path`, `created_at`, `book_count`, `is_calibre_adopted`.
 - **Book**: Represents a creative work (abstract book entity). Attributes: `id`, `title`, `sort_title`, `publication_year`, `publisher`, `description`, `language`, `cover_path`, `rating`, `created_at`, `updated_at`.
 - **Author**: Represents a book author/contributor. Attributes: `id`, `name`, `sort_name`. Linked to Book via many-to-many relationship `book_authors` with `role` (author, editor, illustrator, translator).
 - **BookFormat**: Represents a physical file format of a book. Attributes: `id`, `book_id`, `format` (EPUB, PDF, MOBI, AZW3, TXT, DOCX, CBZ), `file_path`, `file_size_bytes`, `file_hash` (SHA-256), `created_at`.
@@ -147,9 +163,10 @@ As a reader with multiple library collections (e.g. "Technical & Research", "Fic
 
 - **SC-001**: Successful ingestion of standard EPUB and PDF books with title, author, cover image, and TOC extracted in < 2.0 seconds per book on standard desktop hardware.
 - **SC-002**: 100% test pass rate across parser test fixtures for all 7 formats (EPUB, PDF, MOBI, AZW3, TXT, DOCX, CBZ).
-- **SC-003**: 0% file corruption or duplicate book entries when identical books or alternate formats of the same book are imported.
-- **SC-004**: Complete library portability verified: copying an entire library folder to a new path and registering it in the application loads all books, covers, and formats with 100% fidelity.
-- **SC-005**: File sanitization safely handles 100% of illegal path characters without throwing OS filesystem errors on Windows, macOS, or Linux.
+- **SC-003**: In-place adoption of an existing 1,000-book Calibre library completes in < 5.0 seconds with 100% books, authors, and formats mapped without moving or altering any files.
+- **SC-004**: 0% file corruption or duplicate book entries when identical books or alternate formats of the same book are imported.
+- **SC-005**: Complete library portability verified: copying an entire library folder to a new path and registering it in the application loads all books, covers, and formats with 100% fidelity.
+- **SC-006**: File sanitization safely handles 100% of illegal path characters without throwing OS filesystem errors on Windows, macOS, or Linux.
 
 ---
 
