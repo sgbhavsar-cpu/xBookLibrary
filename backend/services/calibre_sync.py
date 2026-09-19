@@ -90,6 +90,8 @@ class CalibreSyncService:
         CREATE TABLE IF NOT EXISTS x_ingestion_jobs (
             id TEXT PRIMARY KEY,
             status TEXT NOT NULL,
+            source_path TEXT,
+            book_id INTEGER,
             total_files INTEGER DEFAULT 0,
             processed_files INTEGER DEFAULT 0,
             error_log TEXT,

@@ -123,12 +123,12 @@
 **Independent Test**: Drop 10 files into the designated auto-import folder; assert watcher detects them, processes them, and records results in `x_ingestion_jobs`.
 
 ### Tests for User Story 5
-- [ ] T036 [P] [US5] Integration test for directory watcher in `tests/integration/test_watcher_service.py`.
+- [x] T036 [P] [US5] Integration test for directory watcher in `tests/integration/test_watcher_service.py`.
 
 ### Implementation for User Story 5
-- [ ] T037 [US5] Implement `WatcherService` using `watchfiles` in `backend/services/watcher_service.py`.
-- [ ] T038 [US5] Implement async batch job worker and status tracking in `backend/services/job_worker.py`.
-- [ ] T039 [US5] Implement FastAPI `jobs_router.py` with `GET /api/jobs/{job_id}`.
+- [x] T037 [US5] Implement `WatcherService` using `watchfiles` in `backend/services/watcher_service.py`.
+- [x] T038 [US5] Implement async batch job worker and status tracking in `backend/services/job_worker.py`.
+- [x] T039 [US5] Implement FastAPI `jobs_router.py` with `GET /api/jobs/{job_id}`.
 
 **Checkpoint**: Auto-import directory automatically monitors and ingests files in the background.
 

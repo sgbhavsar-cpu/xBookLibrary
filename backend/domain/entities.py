@@ -1,6 +1,6 @@
 """Domain entities for xBookLibrary."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -86,8 +86,11 @@ class Library(BaseModel):
 class IngestionJob(BaseModel):
     id: str
     status: IngestionStatus = IngestionStatus.PENDING
+    source_path: Optional[str] = None
+    book_id: Optional[int] = None
+    error_message: Optional[str] = None
     total_files: int = 0
     processed_files: int = 0
     errors: List[Dict[str, Any]] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
