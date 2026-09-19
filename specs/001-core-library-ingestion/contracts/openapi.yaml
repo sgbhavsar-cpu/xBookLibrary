@@ -1,0 +1,264 @@
+openapi: 3.1.0
+info:
+  title: xBookLibrary Core Ingestion & Library API
+  version: 1.0.0
+  description: API endpoints for library management, multi-format book ingestion, and catalog queries.
+paths:
+  /api/libraries:
+    get:
+      summary: List all registered libraries
+      responses:
+        '200':
+          description: List of libraries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Library'
+    post:
+      summary: Create or adopt a library
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLibraryRequest'
+      responses:
+        '201':
+          description: Library successfully created or adopted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Library'
+
+  /api/books:
+    get:
+      summary: Query books in active library
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            default: title
+      responses:
+        '200':
+          description: Paginated book collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBooks'
+
+  /api/books/{book_id}:
+    get:
+      summary: Get detailed book record
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Book details including formats, authors, and TOC
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookDetail'
+
+  /api/books/upload:
+    post:
+      summary: Upload book file(s) for ingestion
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '202':
+          description: Upload accepted and ingestion job enqueued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionJob'
+
+  /api/jobs/{job_id}:
+    get:
+      summary: Get ingestion job status
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Current job status and progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionJob'
+
+components:
+  schemas:
+    Library:
+      type: object
+      required: [id, name, path, is_calibre_adopted]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+        is_calibre_adopted:
+          type: boolean
+        book_count:
+          type: integer
+        auto_watch:
+          type: boolean
+
+    CreateLibraryRequest:
+      type: object
+      required: [name, path]
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        adopt_existing_calibre:
+          type: boolean
+          default: true
+        auto_watch:
+          type: boolean
+          default: false
+
+    BookDetail:
+      type: object
+      required: [id, title, path]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        sort_title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        publication_year:
+          type: integer
+          nullable: true
+        publisher:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        isbn:
+          type: string
+          nullable: true
+        identifiers:
+          type: object
+          additionalProperties:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        formats:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookFormatItem'
+        has_cover:
+          type: boolean
+        cover_url:
+          type: string
+          nullable: true
+        toc:
+          type: array
+          items:
+            $ref: '#/components/schemas/TocNode'
+
+    BookFormatItem:
+      type: object
+      required: [format, size_bytes]
+      properties:
+        format:
+          type: string
+        size_bytes:
+          type: integer
+        file_path:
+          type: string
+
+    TocNode:
+      type: object
+      required: [title, level]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        level:
+          type: integer
+        page_number:
+          type: integer
+          nullable: true
+        anchor_href:
+          type: string
+          nullable: true
+
+    PaginatedBooks:
+      type: object
+      required: [total, page, limit, items]
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookDetail'
+
+    IngestionJob:
+      type: object
+      required: [id, status, total_files, processed_files]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+        total_files:
+          type: integer
+        processed_files:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
