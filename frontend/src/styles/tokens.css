@@ -1,0 +1,101 @@
+/* Design Tokens: 009 Modern 3-Pane Calibre Web UI */
+
+:root {
+  /* Color Palette - Light Theme Default */
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f1f5f9;
+  --bg-surface-glass: rgba(255, 255, 255, 0.85);
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-modal: rgba(15, 23, 42, 0.6);
+
+  --border-subtle: rgba(226, 232, 240, 0.8);
+  --border-default: #e2e8f0;
+  --border-focus: #3b82f6;
+  --border-glass: rgba(255, 255, 255, 0.6);
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
+
+  --accent-primary: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-surface: #eff6ff;
+  --accent-glow: rgba(37, 99, 235, 0.2);
+
+  --badge-blue: #dbeafe;
+  --badge-blue-text: #1e40af;
+  --badge-emerald: #d1fae5;
+  --badge-emerald-text: #065f46;
+  --badge-purple: #ede9fe;
+  --badge-purple-text: #5b21b6;
+  --badge-amber: #fef3c7;
+  --badge-amber-text: #92400e;
+
+  /* Layout Dimensions */
+  --header-height: 56px;
+  --status-bar-height: 30px;
+  --sidebar-width: 260px;
+  --inspector-width: 380px;
+
+  /* Spacing & Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+
+  /* Shadows & Elevation */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.08);
+
+  /* Transitions & Blur */
+  --backdrop-blur: blur(14px);
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 350ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] {
+  /* Color Palette - Deep Dark Mode with Indigo/Slate Glow */
+  --bg-app: #090d16;
+  --bg-surface: #0f172a;
+  --bg-surface-elevated: #1e293b;
+  --bg-surface-glass: rgba(15, 23, 42, 0.8);
+  --bg-card: #111a2e;
+  --bg-card-hover: #17223b;
+  --bg-modal: rgba(3, 7, 18, 0.75);
+
+  --border-subtle: rgba(51, 65, 85, 0.5);
+  --border-default: #1e293b;
+  --border-focus: #60a5fa;
+  --border-glass: rgba(255, 255, 255, 0.08);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-inverse: #090d16;
+
+  --accent-primary: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-surface: rgba(59, 130, 246, 0.15);
+  --accent-glow: rgba(59, 130, 246, 0.35);
+
+  --badge-blue: rgba(37, 99, 235, 0.25);
+  --badge-blue-text: #93c5fd;
+  --badge-emerald: rgba(16, 185, 129, 0.25);
+  --badge-emerald-text: #6ee7b7;
+  --badge-purple: rgba(139, 92, 246, 0.25);
+  --badge-purple-text: #c4b5fd;
+  --badge-amber: rgba(245, 158, 11, 0.25);
+  --badge-amber-text: #fcd34d;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 20px -3px rgba(0, 0, 0, 0.6);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+}
