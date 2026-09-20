@@ -154,4 +154,66 @@ CREATE TABLE IF NOT EXISTS x_library_metadata (
     key TEXT PRIMARY KEY,
     value TEXT
 );
+
+-- AI Classification & Dual Taxonomy Extension Tables
+CREATE TABLE IF NOT EXISTS x_classifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL UNIQUE,
+    bisac_code TEXT NOT NULL,
+    bisac_heading TEXT NOT NULL,
+    ddc_code TEXT NOT NULL,
+    confidence REAL NOT NULL DEFAULT 1.0,
+    secondary_bisac TEXT,
+    secondary_ddc TEXT,
+    reasoning TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS bisac_idx ON x_classifications (bisac_code);
+CREATE INDEX IF NOT EXISTS ddc_idx ON x_classifications (ddc_code);
+
+-- User Custom Hierarchical Taxonomy Tree
+CREATE TABLE IF NOT EXISTS x_taxonomies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_id INTEGER,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL UNIQUE,
+    description TEXT,
+    order_index INTEGER DEFAULT 0,
+    FOREIGN KEY(parent_id) REFERENCES x_taxonomies(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS tax_path_idx ON x_taxonomies (path);
+
+CREATE TABLE IF NOT EXISTS x_books_taxonomies_link (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL,
+    taxonomy_id INTEGER NOT NULL,
+    confidence REAL DEFAULT 1.0,
+    FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE,
+    FOREIGN KEY(taxonomy_id) REFERENCES x_taxonomies(id) ON DELETE CASCADE,
+    UNIQUE(book_id, taxonomy_id)
+);
+CREATE INDEX IF NOT EXISTS btl_tax_idx ON x_books_taxonomies_link (book_id, taxonomy_id);
+
+-- Virtual Bookshelves
+CREATE TABLE IF NOT EXISTS x_bookshelves (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    icon TEXT,
+    is_smart INTEGER DEFAULT 0,
+    rule_expression TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS x_books_bookshelves_link (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL,
+    bookshelf_id INTEGER NOT NULL,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE,
+    FOREIGN KEY(bookshelf_id) REFERENCES x_bookshelves(id) ON DELETE CASCADE,
+    UNIQUE(book_id, bookshelf_id)
+);
+CREATE INDEX IF NOT EXISTS bbl_shelf_idx ON x_books_bookshelves_link (bookshelf_id, book_id);
 """
