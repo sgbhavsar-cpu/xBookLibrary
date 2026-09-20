@@ -90,8 +90,8 @@ As a library owner adopting an existing Calibre library of 1,000 books, I want t
 - **FR-001**: System MUST provide a pluggable `MetadataProvider` interface supporting OpenLibrary, Google Books, CrossRef, and Multimodal LLM adapters.
 - **FR-002**: System MUST execute primary providers (OpenLibrary & Google Books) in parallel using `asyncio.gather`.
 - **FR-003**: System MUST compute a normalized confidence score (0.00 to 1.00) based on ISBN match, title Levenshtein similarity, author overlap, and publication date consistency.
-- **FR-004**: System MUST automatically commit enrichment changes if composite confidence >= 0.85 and no conflicting fields exist.
-- **FR-005**: System MUST stage proposals with confidence < 0.85 or conflicting fields as ephemeral JSON files in `<library_root>/.vectors/staging/<proposal_id>.json`.
+- **FR-004**: System MUST automatically commit enrichment changes ONLY for exact 100% ISBN matches without field conflicts. All non-ISBN searches, fuzzy title matches, and LLM vision extractions MUST be staged in `.vectors/staging/<proposal_id>.json` for human review.
+- **FR-005**: System MUST stage candidate proposals as ephemeral JSON files in `<library_root>/.vectors/staging/<proposal_id>.json`.
 - **FR-006**: System MUST provide REST endpoints:
   - `POST /api/books/{id}/enrich`: trigger enrichment for a specific book.
   - `GET /api/proposals`: list pending review proposals.
@@ -99,7 +99,7 @@ As a library owner adopting an existing Calibre library of 1,000 books, I want t
   - `POST /api/proposals/{proposal_id}/apply`: apply proposed fields (with optional field-level overrides) to `metadata.db` and write updated `metadata.opf`.
   - `POST /api/proposals/{proposal_id}/discard`: delete the staging proposal without modifying the book.
   - `POST /api/enrich/batch`: queue asynchronous batch enrichment across multiple books.
-- **FR-007**: System MUST provide a pluggable `LLMClientAdapter` supporting Google Gemini (`gemini-2.0-flash`) and local Ollama (`llama3.2-vision`).
+- **FR-007**: System MUST provide a universal LLM adapter using `litellm` supporting Google Gemini (`gemini/gemini-2.0-flash`), local Ollama (`ollama/llama3.2-vision`), OpenAI, and Claude.
 - **FR-008**: System MUST cache external API responses in `<library_root>/.vectors/cache/` (keyed by hash of query parameters) with a 7-day TTL to avoid duplicate upstream API calls.
 - **FR-009**: System MUST update both SQLite `metadata.db` (Calibre tables: `books`, `authors`, `tags`, `identifiers`, `comments`) and filesystem `metadata.opf` atomically upon proposal approval.
 
