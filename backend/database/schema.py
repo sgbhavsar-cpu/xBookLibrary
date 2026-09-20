@@ -233,4 +233,41 @@ CREATE TABLE IF NOT EXISTS x_summaries (
     FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS summaries_book_idx ON x_summaries (book_id);
+
+-- RAG Index Status & Checksum Tracking
+CREATE TABLE IF NOT EXISTS x_index_status (
+    book_id INTEGER PRIMARY KEY,
+    library_id TEXT NOT NULL,
+    indexed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    chunk_count INTEGER NOT NULL DEFAULT 0,
+    checksum TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'indexed',
+    error_message TEXT,
+    FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_x_index_status_library ON x_index_status (library_id);
+
+-- Conversational Chat Sessions
+CREATE TABLE IF NOT EXISTS x_chat_sessions (
+    id TEXT PRIMARY KEY,
+    library_id TEXT NOT NULL,
+    book_id INTEGER,
+    title TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_x_chat_sessions_library ON x_chat_sessions (library_id);
+
+-- Conversational Chat Messages with Citations
+CREATE TABLE IF NOT EXISTS x_chat_messages (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
+    content TEXT NOT NULL,
+    citations_json TEXT NOT NULL DEFAULT '[]',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(session_id) REFERENCES x_chat_sessions(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_x_chat_messages_session ON x_chat_messages (session_id);
 """

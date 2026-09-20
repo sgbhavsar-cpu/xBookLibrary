@@ -11,13 +11,14 @@
 **Goal**: Establish relational schema for RAG tracking/chat sessions, Pydantic domain models, and the pluggable embedding provider abstraction.
 
 ### Tests for Foundational Schema & Models
-- [ ] T001 [P] Unit test for RAG domain schemas (`VectorChunk`, `SearchResult`, `Citation`, `ChatMessage`, `ChatSession`, `IndexStatus`) in `tests/unit/test_rag_domain.py`.
-- [ ] T002 [P] Unit test for `EmbeddingProvider` abstraction (verifying `GeminiEmbeddingProvider` and `MockEmbeddingProvider` output dimensions and normalized vectors) in `tests/unit/test_embedding_provider.py`.
+- [x] T001 [P] Unit test for RAG domain schemas (`VectorChunk`, `SearchResult`, `Citation`, `ChatMessage`, `ChatSession`, `IndexStatus`) in `tests/unit/test_rag_domain.py`.
+- [x] T002 [P] Unit test for `EmbeddingProvider` abstraction (verifying `GeminiEmbeddingProvider` and `MockEmbeddingProvider` output dimensions and normalized vectors) in `tests/unit/test_embedding_provider.py`.
 
 ### Implementation for Foundational Schema & Models
-- [ ] T003 Update `backend/database/schema.py` to create `x_index_status`, `x_chat_sessions`, and `x_chat_messages` tables with appropriate indexes and foreign keys.
-- [ ] T004 Implement domain models in `backend/domain/rag.py`.
-- [ ] T005 Implement `BaseEmbeddingProvider`, `GeminiEmbeddingProvider`, and `MockEmbeddingProvider` in `backend/providers/embedding_provider.py`.
+- [x] T003 Update `backend/database/schema.py` to create `x_index_status`, `x_chat_sessions`, and `x_chat_messages` tables with appropriate indexes and foreign keys.
+- [x] T004 Implement domain models in `backend/domain/rag.py`.
+- [x] T005 Implement `BaseEmbeddingProvider`, `GeminiEmbeddingProvider`, and `MockEmbeddingProvider` in `backend/providers/embedding_provider.py`.
+
 
 ---
 
@@ -26,12 +27,13 @@
 **Goal**: Implement chapter-aware document chunking, LanceDB table initialization under `<LibraryRoot>/.vectors/`, and single-book & batch vector indexing with delta checksum skipping.
 
 ### Tests for User Story 1
-- [ ] T006 [P] [US1] Unit test for hierarchical chunking (sliding window with chapter breadcrumbs and token limits) in `tests/unit/test_rag_indexer.py`.
-- [ ] T007 [P] [US1] Unit test for LanceDB indexing (embedded storage in `<LibraryRoot>/.vectors/`, delta checksum skipping, and metadata preservation) in `tests/unit/test_rag_indexer.py`.
+- [x] T006 [P] [US1] Unit test for hierarchical chunking (sliding window with chapter breadcrumbs and token limits) in `tests/unit/test_rag_indexer.py`.
+- [x] T007 [P] [US1] Unit test for LanceDB indexing (embedded storage in `<LibraryRoot>/.vectors/`, delta checksum skipping, and metadata preservation) in `tests/unit/test_rag_indexer.py`.
 
 ### Implementation for User Story 1
-- [ ] T008 [US1] Implement `RAGIndexer` in `backend/services/rag_indexer.py` with `chunk_book`, `index_book`, and `_get_or_create_table`.
-- [ ] T009 [US1] Implement incremental delta checksum checking in `RAGIndexer` using `x_index_status`.
+- [x] T008 [US1] Implement `RAGIndexer` in `backend/services/rag_indexer.py` with `chunk_book`, `index_book`, and `_get_or_create_table`.
+- [x] T009 [US1] Implement incremental delta checksum checking in `RAGIndexer` using `x_index_status`.
+
 
 ---
 
@@ -40,12 +42,13 @@
 **Goal**: Implement hybrid retrieval combining dense LanceDB vector cosine similarity with BM25 keyword matching via Reciprocal Rank Fusion (RRF).
 
 ### Tests for User Story 2
-- [ ] T010 [P] [US2] Unit test for dense search, keyword matching, and RRF rank fusion in `tests/unit/test_rag_search.py`.
-- [ ] T011 [P] [US2] Unit test for query filtering (scoped by `book_id`, `library_id`, or author) in `tests/unit/test_rag_search.py`.
+- [x] T010 [P] [US2] Unit test for dense search, keyword matching, and RRF rank fusion in `tests/unit/test_rag_search.py`.
+- [x] T011 [P] [US2] Unit test for query filtering (scoped by `book_id`, `library_id`, or author) in `tests/unit/test_rag_search.py`.
 
 ### Implementation for User Story 2
-- [ ] T012 [US2] Implement `RAGSearchService` in `backend/services/rag_search.py` with vector cosine search, BM25 keyword matching, and Reciprocal Rank Fusion.
-- [ ] T013 [US2] Implement metadata scoping and filtering in `RAGSearchService`.
+- [x] T012 [US2] Implement `RAGSearchService` in `backend/services/rag_search.py` with vector cosine search, BM25 keyword matching, and Reciprocal Rank Fusion.
+- [x] T013 [US2] Implement metadata scoping and filtering in `RAGSearchService`.
+
 
 ---
 
@@ -54,10 +57,11 @@
 **Goal**: Implement multi-turn conversational chat sessions, prompt assembly with retrieved context, LLM answer synthesis, structured citation extraction, and refusal guardrails.
 
 ### Tests for User Story 3
-- [ ] T014 [P] [US3] Unit test for conversational chat agent (session persistence, multi-turn history, citation formatting, and out-of-context refusal) in `tests/unit/test_rag_chat_agent.py`.
+- [x] T014 [P] [US3] Unit test for conversational chat agent (session persistence, multi-turn history, citation formatting, and out-of-context refusal) in `tests/unit/test_rag_chat_agent.py`.
 
 ### Implementation for User Story 3
-- [ ] T015 [US3] Implement `RAGChatAgent` in `backend/services/rag_chat_agent.py` supporting session creation, message persistence, context retrieval, grounded answer generation, and citation extraction.
+- [x] T015 [US3] Implement `RAGChatAgent` in `backend/services/rag_chat_agent.py` supporting session creation, message persistence, context retrieval, grounded answer generation, and citation extraction.
+
 
 ---
 
@@ -66,11 +70,12 @@
 **Goal**: Expose REST endpoints for indexing management, search, and conversational chat, with background job execution.
 
 ### Tests for User Story 4 & 5
-- [ ] T016 [P] [US4/US5] Contract tests for RAG endpoints (`/api/libraries/{id}/index`, `/api/books/{id}/index`, `/api/libraries/{id}/search`, `/api/chat/sessions`, `/api/chat/sessions/{id}/messages`) in `tests/contract/test_rag_api.py`.
+- [x] T016 [P] [US4/US5] Contract tests for RAG endpoints (`/api/libraries/{id}/index`, `/api/books/{id}/index`, `/api/libraries/{id}/search`, `/api/chat/sessions`, `/api/chat/sessions/{id}/messages`) in `tests/contract/test_rag_api.py`.
 
 ### Implementation for User Story 4 & 5
-- [ ] T017 [US4/US5] Implement `rag_router.py` in `backend/api/rag_router.py`.
-- [ ] T018 [US4/US5] Mount `rag_router` in `backend/main.py`.
+- [x] T017 [US4/US5] Implement `rag_router.py` in `backend/api/rag_router.py`.
+- [x] T018 [US4/US5] Mount `rag_router` in `backend/main.py`.
+
 
 ---
 
@@ -78,5 +83,6 @@
 
 **Goal**: Zero lint/formatting issues, 100% test pass rate across all features, verified library portability.
 
-- [ ] T019 Run `ruff check` and `ruff format` across `backend/` and `tests/`.
-- [ ] T020 Execute full Pytest test suite asserting 100% passing tests across all features with coverage check.
+- [x] T019 Run `ruff check` and `ruff format` across `backend/` and `tests/`.
+- [x] T020 Execute full Pytest test suite asserting 100% passing tests across all features with coverage check.
+
