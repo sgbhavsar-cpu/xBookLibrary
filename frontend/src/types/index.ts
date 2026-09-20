@@ -170,3 +170,28 @@ export interface MetadataProposal {
   };
   created_at: string;
 }
+
+export interface ConversionJob {
+  id: string;
+  book_id: number;
+  library_id: string;
+  source_format: string;
+  target_format: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  percent_complete: number;
+  engine_used?: 'calibre_cli' | 'python_native';
+  output_file_path?: string;
+  output_size_bytes?: number;
+  error_message?: string;
+  created_at: string;
+  completed_at?: string;
+  logs: string[];
+}
+
+export interface ConversionRequest {
+  book_id: number;
+  source_format?: string;
+  target_format: string;
+  options?: Record<string, any>;
+}
+

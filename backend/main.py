@@ -10,8 +10,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.books_router import router as books_router
+from backend.api.conversion_router import router as conversion_router
 from backend.api.jobs_router import router as jobs_router
 from backend.api.libraries_router import router as libraries_router
+from backend.api.opds_router import router as opds_router
 from backend.api.proposals_router import router as proposals_router
 from backend.api.rag_router import router as rag_router
 from backend.api.summaries_router import router as summaries_router
@@ -50,6 +52,8 @@ app.include_router(taxonomies_router)
 app.include_router(summaries_router)
 app.include_router(rag_router)
 app.include_router(synthesis_router)
+app.include_router(opds_router)
+app.include_router(conversion_router)
 
 
 @app.get("/health", tags=["Health"])

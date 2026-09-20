@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BookOpen,
   FolderOpen,
@@ -10,11 +10,14 @@ import {
   Sparkles,
   Sun,
   UploadCloud,
+  Wifi,
   X,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { OpdsFeedModal } from './OpdsFeedModal';
 
 export const HeaderToolbar: React.FC = () => {
+  const [isOpdsModalOpen, setIsOpdsModalOpen] = useState(false);
   const {
     libraries,
     activeLibraryId,
@@ -184,6 +187,17 @@ export const HeaderToolbar: React.FC = () => {
           <span>Import</span>
         </button>
 
+        {/* OPDS Wireless Feed */}
+        <button
+          className="btn btn-secondary"
+          onClick={() => setIsOpdsModalOpen(true)}
+          title="OPDS wireless feed for KOReader & Moon+ Reader"
+          style={{ borderColor: 'rgba(16, 185, 129, 0.4)' }}
+        >
+          <Wifi size={15} color="#10b981" />
+          <span>OPDS Feed</span>
+        </button>
+
         {/* RAG QA Chat Launcher */}
         <button
           className="btn btn-secondary"
@@ -214,6 +228,8 @@ export const HeaderToolbar: React.FC = () => {
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
       </div>
+
+      <OpdsFeedModal isOpen={isOpdsModalOpen} onClose={() => setIsOpdsModalOpen(false)} />
     </header>
   );
 };

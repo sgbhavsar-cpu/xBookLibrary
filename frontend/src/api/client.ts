@@ -7,6 +7,8 @@ import type {
   BookSummary,
   ChatMessage,
   ChatSession,
+  ConversionJob,
+  ConversionRequest,
   IngestionJob,
   Library,
   MetadataProposal,
@@ -218,5 +220,26 @@ export const api = {
 
   getSynthesisExportUrl(docId: string, format = 'markdown'): string {
     return `/api/synthesis/documents/${docId}/export?format=${format}`;
+  },
+
+  // Format Conversion & OPDS Feeds
+  async startConversion(payload: ConversionRequest): Promise<ConversionJob> {
+    return request<ConversionJob>('/api/convert', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getConversionJob(jobId: string): Promise<ConversionJob> {
+    return request<ConversionJob>(`/api/convert/jobs/${jobId}`);
+  },
+
+  async listConversionJobs(bookId?: number): Promise<ConversionJob[]> {
+    const qs = bookId !== undefined ? `?book_id=${bookId}` : '';
+    return request<ConversionJob[]>(`/api/convert/jobs${qs}`);
+  },
+
+  getOpdsFeedUrl(): string {
+    return `${window.location.origin}/opds`;
   },
 };

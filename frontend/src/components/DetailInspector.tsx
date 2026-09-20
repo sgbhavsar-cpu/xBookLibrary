@@ -4,6 +4,7 @@ import {
   CheckCircle,
   Download,
   RefreshCw,
+  Repeat,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -21,7 +22,9 @@ export const DetailInspector: React.FC = () => {
 
   const [isEnriching, setIsEnriching] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const [enrichSuccess, setEnrichSuccess] = useState<string | null>(null);
+  const [convertMessage, setConvertMessage] = useState<string | null>(null);
 
   if (!selectedBook) {
     return (
@@ -75,6 +78,39 @@ export const DetailInspector: React.FC = () => {
       console.error('Vector indexing failed:', err);
     } finally {
       setIsIndexing(false);
+    }
+  };
+
+  const handleConvert = async (targetFormat: string) => {
+    if (!selectedBook) return;
+    setIsConverting(true);
+    setConvertMessage(`Converting to ${targetFormat}...`);
+    try {
+      const job = await api.startConversion({
+        book_id: selectedBook.id,
+        target_format: targetFormat,
+      });
+      const poll = setInterval(async () => {
+        try {
+          const status = await api.getConversionJob(job.id);
+          if (status.status === 'completed') {
+            clearInterval(poll);
+            setIsConverting(false);
+            setConvertMessage(`Converted to ${targetFormat}!`);
+            await refreshSelectedBook();
+          } else if (status.status === 'failed') {
+            clearInterval(poll);
+            setIsConverting(false);
+            setConvertMessage(status.error_message || 'Conversion failed');
+          }
+        } catch {
+          clearInterval(poll);
+          setIsConverting(false);
+        }
+      }, 1200);
+    } catch (err: any) {
+      setIsConverting(false);
+      setConvertMessage(err.message || 'Conversion failed');
     }
   };
 
@@ -207,6 +243,39 @@ export const DetailInspector: React.FC = () => {
               <span>{fmt.format} ({Math.round(fmt.uncompressed_size / 1024)} KB)</span>
             </a>
           ))}
+        </div>
+
+        {/* Format Conversion Controls */}
+        <div style={{ marginTop: '8px', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {!selectedBook.formats.some((f) => f.format.toUpperCase() === 'EPUB') && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => handleConvert('EPUB')}
+              disabled={isConverting}
+              style={{ fontSize: '11px', padding: '3px 8px' }}
+              title="Convert to reflowable EPUB"
+            >
+              <Repeat size={11} className={isConverting ? 'animate-spin' : ''} />
+              <span>Convert to EPUB</span>
+            </button>
+          )}
+          {!selectedBook.formats.some((f) => f.format.toUpperCase() === 'PDF') && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => handleConvert('PDF')}
+              disabled={isConverting}
+              style={{ fontSize: '11px', padding: '3px 8px' }}
+              title="Convert to readable PDF"
+            >
+              <Repeat size={11} className={isConverting ? 'animate-spin' : ''} />
+              <span>Convert to PDF</span>
+            </button>
+          )}
+          {convertMessage && (
+            <div style={{ fontSize: '11px', color: 'var(--accent-primary)', width: '100%', marginTop: '2px' }}>
+              {convertMessage}
+            </div>
+          )}
         </div>
       </div>
 
