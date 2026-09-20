@@ -88,6 +88,23 @@ CREATE TABLE IF NOT EXISTS books_tags_link (
     UNIQUE(book, tag)
 );
 
+CREATE TABLE IF NOT EXISTS publishers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    sort TEXT
+);
+CREATE INDEX IF NOT EXISTS publishers_idx ON publishers (name COLLATE NOCASE);
+
+CREATE TABLE IF NOT EXISTS books_publishers_link (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book INTEGER NOT NULL,
+    publisher INTEGER NOT NULL,
+    FOREIGN KEY(book) REFERENCES books(id) ON DELETE CASCADE,
+    FOREIGN KEY(publisher) REFERENCES publishers(id) ON DELETE CASCADE,
+    UNIQUE(book, publisher)
+);
+CREATE INDEX IF NOT EXISTS bpl_idx ON books_publishers_link (book, publisher);
+
 CREATE TABLE IF NOT EXISTS comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     book INTEGER NOT NULL UNIQUE,

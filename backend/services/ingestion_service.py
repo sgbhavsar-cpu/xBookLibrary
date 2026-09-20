@@ -237,6 +237,14 @@ class IngestionService:
                 (book_id, tag_id),
             )
 
+        # Insert Publisher if present
+        if payload.publisher:
+            pub_id = await self._get_or_create_publisher(db, payload.publisher)
+            await db.execute(
+                "INSERT OR IGNORE INTO books_publishers_link (book, publisher) VALUES (?, ?)",
+                (book_id, pub_id),
+            )
+
         # Insert Comments / Description
         if payload.description:
             await db.execute(
@@ -294,6 +302,14 @@ class IngestionService:
         cur = await db.execute("INSERT INTO tags (name) VALUES (?)", (name,))
         return cur.lastrowid
 
+    async def _get_or_create_publisher(self, db: aiosqlite.Connection, name: str) -> int:
+        async with db.execute("SELECT id FROM publishers WHERE name = ?", (name,)) as cur:
+            row = await cur.fetchone()
+            if row:
+                return row["id"]
+        cur = await db.execute("INSERT INTO publishers (name, sort) VALUES (?, ?)", (name, name))
+        return cur.lastrowid
+
     async def _get_book_by_id(self, db: aiosqlite.Connection, book_id: int) -> Book:
         async with db.execute(
             "SELECT id, title, sort, pubdate, isbn, path, has_cover FROM books WHERE id = ?",
@@ -311,6 +327,18 @@ class IngestionService:
         async with db.execute(author_query, (book_id,)) as cur:
             for r in await cur.fetchall():
                 authors.append(r["name"])
+
+        # Publisher
+        publisher = None
+        pub_query = (
+            "SELECT p.name FROM publishers p "
+            "JOIN books_publishers_link bpl ON p.id = bpl.publisher "
+            "WHERE bpl.book = ?"
+        )
+        async with db.execute(pub_query, (book_id,)) as cur:
+            p_row = await cur.fetchone()
+            if p_row:
+                publisher = p_row["name"]
 
         # Formats
         formats = []
@@ -381,6 +409,7 @@ class IngestionService:
             title=b["title"],
             sort_title=b["sort"],
             authors=authors,
+            publisher=publisher,
             publication_year=pub_year,
             isbn=b["isbn"],
             path=b["path"],

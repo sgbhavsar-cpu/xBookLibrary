@@ -13,6 +13,7 @@ class UserPreferences(BaseModel):
     theme: str = "dark"
     default_page_size: int = 50
     gemini_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
     ollama_endpoint: str = "http://localhost:11434"
 
 
@@ -82,3 +83,18 @@ class ConfigManager:
             config.active_library_id = library.id
         self.save(config)
         return library
+
+    def get_gemini_api_key(self) -> Optional[str]:
+        import os
+
+        return os.environ.get("GEMINI_API_KEY") or self.load().preferences.gemini_api_key
+
+    def get_openai_api_key(self) -> Optional[str]:
+        import os
+
+        return os.environ.get("OPENAI_API_KEY") or self.load().preferences.openai_api_key
+
+    def get_ollama_endpoint(self) -> str:
+        import os
+
+        return os.environ.get("OLLAMA_HOST") or self.load().preferences.ollama_endpoint
