@@ -1,0 +1,243 @@
+openapi: 3.1.0
+info:
+  title: xBookLibrary AI Classification & Taxonomy API
+  version: 0.1.0
+  description: Endpoints for bibliographic BISAC/Dewey Decimal classification, custom hierarchical taxonomies, and virtual bookshelves.
+paths:
+  /api/books/{book_id}/classify:
+    post:
+      summary: Trigger AI classification (BISAC & DDC) for a book
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Classification result (auto-applied or staged)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationResult'
+
+  /api/taxonomies:
+    get:
+      summary: Retrieve the hierarchical custom category tree
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaxonomyNode'
+    post:
+      summary: Create a new custom taxonomy category node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                parent_id:
+                  type: integer
+                  nullable: true
+                description:
+                  type: string
+                  nullable: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxonomyNode'
+
+  /api/taxonomies/{taxonomy_id}:
+    delete:
+      summary: Delete a custom taxonomy node and unbind linked books
+      parameters:
+        - name: taxonomy_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Node deleted
+
+  /api/bookshelves:
+    get:
+      summary: List all virtual bookshelves in the active library
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bookshelf'
+    post:
+      summary: Create a new virtual bookshelf
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                icon:
+                  type: string
+                  nullable: true
+                is_smart:
+                  type: boolean
+                  default: false
+                rule_expression:
+                  type: string
+                  nullable: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bookshelf'
+
+  /api/bookshelves/{bookshelf_id}/books:
+    get:
+      summary: List all books assigned to a specific bookshelf
+      parameters:
+        - name: bookshelf_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+    post:
+      summary: Add one or more books to a virtual bookshelf
+      parameters:
+        - name: bookshelf_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [book_ids]
+              properties:
+                book_ids:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        "200":
+          description: Books successfully added to bookshelf
+
+components:
+  schemas:
+    ClassificationResult:
+      type: object
+      properties:
+        book_id:
+          type: integer
+        bisac_code:
+          type: string
+        bisac_heading:
+          type: string
+        ddc_code:
+          type: string
+        confidence:
+          type: number
+        suggested_tags:
+          type: array
+          items:
+            type: string
+        secondary_bisac:
+          type: string
+          nullable: true
+        secondary_ddc:
+          type: string
+          nullable: true
+        reasoning:
+          type: string
+          nullable: true
+        applied:
+          type: boolean
+        proposal_id:
+          type: string
+          nullable: true
+
+    TaxonomyNode:
+      type: object
+      properties:
+        id:
+          type: integer
+        parent_id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        path:
+          type: string
+        description:
+          type: string
+          nullable: true
+        order_index:
+          type: integer
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxonomyNode'
+
+    Bookshelf:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        is_smart:
+          type: boolean
+        rule_expression:
+          type: string
+          nullable: true
+        book_count:
+          type: integer
+
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
