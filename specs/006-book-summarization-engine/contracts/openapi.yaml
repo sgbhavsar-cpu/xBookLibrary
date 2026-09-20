@@ -1,0 +1,218 @@
+openapi: 3.1.0
+info:
+  title: xBookLibrary Multi-Resolution Book Summarization API
+  version: 0.1.0
+  description: Endpoints for generating, retrieving, regenerating, and exporting multi-resolution AI book summaries.
+paths:
+  /api/books/{book_id}/summary:
+    get:
+      summary: Retrieve the cached multi-resolution summary for a book
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Multi-resolution summary found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookSummary'
+        "404":
+          description: Summary not found for this book
+
+    post:
+      summary: Trigger or regenerate multi-resolution summary generation
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                custom_instructions:
+                  type: string
+                  nullable: true
+                force_regenerate:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Summary generated synchronously (for short books) or retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookSummary'
+        "202":
+          description: Summarization started as background job
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                  status:
+                    type: string
+                  book_id:
+                    type: integer
+
+  /api/books/{book_id}/summary/export:
+    get:
+      summary: Export summary as formatted Markdown or HTML
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [markdown, html, json]
+            default: markdown
+      responses:
+        "200":
+          description: Formatted summary file export
+          content:
+            text/markdown:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookSummary'
+
+  /api/books/{book_id}/summary/sync-calibre:
+    post:
+      summary: Sync executive summary into Calibre book comments and metadata.opf
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Executive summary synchronized into Calibre metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  synced:
+                    type: boolean
+
+components:
+  schemas:
+    ExecutiveSnapshot:
+      type: object
+      required: [hook, core_thesis, target_audience, key_arguments, estimated_reading_time_minutes]
+      properties:
+        hook:
+          type: string
+        core_thesis:
+          type: string
+        target_audience:
+          type: string
+        key_arguments:
+          type: array
+          items:
+            type: string
+        estimated_reading_time_minutes:
+          type: integer
+
+    ChapterSummary:
+      type: object
+      required: [chapter_index, chapter_title, summary, key_takeaways]
+      properties:
+        chapter_index:
+          type: integer
+        chapter_title:
+          type: string
+        summary:
+          type: string
+        key_takeaways:
+          type: array
+          items:
+            type: string
+        important_quotes:
+          type: array
+          items:
+            type: string
+
+    ConceptualIndex:
+      type: object
+      required: [frameworks, key_takeaways, quotable_moments, action_items]
+      properties:
+        frameworks:
+          type: array
+          items:
+            type: string
+        key_takeaways:
+          type: array
+          items:
+            type: string
+        quotable_moments:
+          type: array
+          items:
+            type: object
+            properties:
+              quote:
+                type: string
+              source:
+                type: string
+        action_items:
+          type: array
+          items:
+            type: string
+
+    SummaryMetadata:
+      type: object
+      required: [model_name, generated_at]
+      properties:
+        model_name:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+        duration_seconds:
+          type: number
+        word_count:
+          type: integer
+        prompt_version:
+          type: string
+        custom_instructions:
+          type: string
+          nullable: true
+
+    BookSummary:
+      type: object
+      required: [book_id, executive_snapshot, chapters, conceptual_index, metadata]
+      properties:
+        book_id:
+          type: integer
+        executive_snapshot:
+          $ref: '#/components/schemas/ExecutiveSnapshot'
+        chapters:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChapterSummary'
+        conceptual_index:
+          $ref: '#/components/schemas/ConceptualIndex'
+        metadata:
+          $ref: '#/components/schemas/SummaryMetadata'
