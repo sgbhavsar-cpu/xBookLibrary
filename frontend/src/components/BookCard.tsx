@@ -144,6 +144,51 @@ export const BookCard: React.FC<BookCardProps> = ({
           {book.authors.join(', ')}
         </div>
 
+        {/* Series Badge */}
+        {book.series && (
+          <div
+            style={{
+              fontSize: '11px',
+              color: 'var(--accent-primary)',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+            title={`${book.series} #${book.series_index || 1}`}
+          >
+            {book.series} #{book.series_index || 1}
+          </div>
+        )}
+
+        {/* Custom read_status Badge */}
+        {book.custom_values?.read_status && (
+          <div style={{ marginTop: '2px' }}>
+            <span
+              style={{
+                fontSize: '9.5px',
+                fontWeight: 600,
+                padding: '1px 5px',
+                borderRadius: '3px',
+                background:
+                  book.custom_values.read_status === 'Reading'
+                    ? 'rgba(59, 130, 246, 0.15)'
+                    : book.custom_values.read_status === 'Completed'
+                    ? 'rgba(16, 185, 129, 0.15)'
+                    : 'var(--bg-surface-elevated)',
+                color:
+                  book.custom_values.read_status === 'Reading'
+                    ? '#3b82f6'
+                    : book.custom_values.read_status === 'Completed'
+                    ? '#10b981'
+                    : 'var(--text-muted)',
+              }}
+            >
+              {book.custom_values.read_status}
+            </span>
+          </div>
+        )}
+
         {/* Formats and Rating Footer */}
         <div
           style={{

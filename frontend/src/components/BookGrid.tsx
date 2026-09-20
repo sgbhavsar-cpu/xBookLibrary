@@ -11,10 +11,13 @@ export const BookGrid: React.FC = () => {
     selectedTaxonomyPath,
     selectedAuthor,
     selectedFormat,
+    selectedSeries,
     selectedBookId,
     selectBook,
     openReader,
     isLoadingBooks,
+    activeVirtualLibrary,
+    virtualLibraries,
   } = useStore();
 
   const parentRef = useRef<HTMLDivElement>(null);
@@ -65,9 +68,46 @@ export const BookGrid: React.FC = () => {
         if (!matchesHeading) return false;
       }
 
+      // 5. Series Filter
+      if (selectedSeries && b.series !== selectedSeries) {
+        return false;
+      }
+
+      // 6. Virtual Library Filter
+      if (activeVirtualLibrary) {
+        const vl = virtualLibraries.find((v) => v.name === activeVirtualLibrary);
+        if (vl && vl.query.trim()) {
+          const q = vl.query.toLowerCase();
+          if (q.includes('#read_status:')) {
+            const expected = q.split('#read_status:')[1]?.split(' ')[0]?.replace(/["']/g, '');
+            const current = (b.custom_values?.read_status || '').toLowerCase();
+            if (expected && !current.includes(expected.toLowerCase())) return false;
+          }
+          if (q.includes('series:')) {
+            const expected = q.split('series:')[1]?.split(' ')[0]?.replace(/["']/g, '');
+            const current = (b.series || '').toLowerCase();
+            if (expected && !current.includes(expected.toLowerCase())) return false;
+          }
+          if (q.includes('tag:') || q.includes('tags:')) {
+            const match = q.match(/tags?:"?([^"\s]+)"?/);
+            const expected = match ? match[1].toLowerCase() : '';
+            if (expected && !b.tags.some((t) => t.toLowerCase().includes(expected))) return false;
+          }
+        }
+      }
+
       return true;
     });
-  }, [books, searchQuery, selectedAuthor, selectedFormat, selectedTaxonomyPath]);
+  }, [
+    books,
+    searchQuery,
+    selectedAuthor,
+    selectedFormat,
+    selectedTaxonomyPath,
+    selectedSeries,
+    activeVirtualLibrary,
+    virtualLibraries,
+  ]);
 
   // Compute column count based on width: min 160px card width + gaps
   const columnCount = Math.max(1, Math.floor(containerWidth / 180));

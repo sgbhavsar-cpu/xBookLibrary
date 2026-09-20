@@ -84,6 +84,18 @@ class LibraryManager:
         self.config_manager.save(config)
         return target
 
+    def get_library(self, library_id: str) -> Optional[Library]:
+        config = self.config_manager.load()
+        return next((lib for lib in config.libraries if lib.id == library_id), None)
+
+    def get_database_manager(self, library_id: str) -> DatabaseManager:
+        lib = self.get_library(library_id)
+        if not lib:
+            lib = self.get_active_library()
+        if not lib:
+            raise ValueError(f"Library '{library_id}' not found.")
+        return DatabaseManager(Path(lib.path))
+
     async def get_books_for_library(
         self, library_id: str, page: int = 1, limit: int = 50, query: Optional[str] = None
     ) -> List[Book]:

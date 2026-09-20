@@ -7,9 +7,12 @@ import { api } from '../api/client';
 import type {
   Book,
   BookSummary,
+  CustomColumnDefinition,
   Library,
   MetadataProposal,
+  SeriesInfo,
   TaxonomyNode,
+  VirtualLibrary,
 } from '../types';
 
 interface AppStore {
@@ -34,14 +37,26 @@ interface AppStore {
   selectedTaxonomyPath: string | null;
   selectedAuthor: string | null;
   selectedFormat: string | null;
+  selectedSeries: string | null;
   taxonomyTree: TaxonomyNode[];
+
+  // Custom Columns & Virtual Libraries & Series
+  customColumns: CustomColumnDefinition[];
+  seriesList: SeriesInfo[];
+  virtualLibraries: VirtualLibrary[];
+  activeVirtualLibrary: string | null;
 
   setSearchQuery: (query: string) => void;
   setSelectedTaxonomyPath: (path: string | null) => void;
   setSelectedAuthor: (author: string | null) => void;
   setSelectedFormat: (format: string | null) => void;
+  setSelectedSeries: (series: string | null) => void;
+  setActiveVirtualLibrary: (name: string | null) => void;
   loadBooks: () => Promise<void>;
   loadTaxonomies: () => Promise<void>;
+  loadCustomColumns: () => Promise<void>;
+  loadSeriesList: () => Promise<void>;
+  loadVirtualLibraries: () => Promise<void>;
 
   // Inspector & Selected Book
   selectedBookId: number | null;
@@ -102,8 +117,13 @@ export const useStore = create<AppStore>((set, get) => ({
       }
       set({ libraries: libs, activeLibraryId: activeId });
       if (activeId) {
-        await get().loadBooks();
-        await get().loadTaxonomies();
+        await Promise.all([
+          get().loadBooks(),
+          get().loadTaxonomies(),
+          get().loadCustomColumns(),
+          get().loadSeriesList(),
+          get().loadVirtualLibraries(),
+        ]);
       }
     } catch (err) {
       console.error('Failed to load libraries:', err);
@@ -112,9 +132,20 @@ export const useStore = create<AppStore>((set, get) => ({
   switchLibrary: async (id: string) => {
     try {
       await api.switchLibrary(id);
-      set({ activeLibraryId: id, selectedBookId: null, selectedBook: null });
-      await get().loadBooks();
-      await get().loadTaxonomies();
+      set({
+        activeLibraryId: id,
+        selectedBookId: null,
+        selectedBook: null,
+        activeVirtualLibrary: null,
+        selectedSeries: null,
+      });
+      await Promise.all([
+        get().loadBooks(),
+        get().loadTaxonomies(),
+        get().loadCustomColumns(),
+        get().loadSeriesList(),
+        get().loadVirtualLibraries(),
+      ]);
     } catch (err) {
       console.error('Failed to switch library:', err);
     }
@@ -127,7 +158,14 @@ export const useStore = create<AppStore>((set, get) => ({
   selectedTaxonomyPath: null,
   selectedAuthor: null,
   selectedFormat: null,
+  selectedSeries: null,
   taxonomyTree: [],
+
+  // Custom Columns & Virtual Libraries & Series
+  customColumns: [],
+  seriesList: [],
+  virtualLibraries: [],
+  activeVirtualLibrary: null,
 
   setSearchQuery: (searchQuery) => {
     set({ searchQuery });
@@ -140,6 +178,12 @@ export const useStore = create<AppStore>((set, get) => ({
   },
   setSelectedFormat: (format) => {
     set({ selectedFormat: format });
+  },
+  setSelectedSeries: (series) => {
+    set({ selectedSeries: series });
+  },
+  setActiveVirtualLibrary: (activeVirtualLibrary) => {
+    set({ activeVirtualLibrary });
   },
 
   loadBooks: async () => {
@@ -162,6 +206,39 @@ export const useStore = create<AppStore>((set, get) => ({
       set({ taxonomyTree: tree });
     } catch (err) {
       console.error('Failed to load taxonomies:', err);
+    }
+  },
+
+  loadCustomColumns: async () => {
+    const libId = get().activeLibraryId;
+    if (!libId) return;
+    try {
+      const cols = await api.getCustomColumns(libId);
+      set({ customColumns: cols });
+    } catch (err) {
+      console.error('Failed to load custom columns:', err);
+    }
+  },
+
+  loadSeriesList: async () => {
+    const libId = get().activeLibraryId;
+    if (!libId) return;
+    try {
+      const series = await api.getSeriesList(libId);
+      set({ seriesList: series });
+    } catch (err) {
+      console.error('Failed to load series list:', err);
+    }
+  },
+
+  loadVirtualLibraries: async () => {
+    const libId = get().activeLibraryId;
+    if (!libId) return;
+    try {
+      const vls = await api.getVirtualLibraries(libId);
+      set({ virtualLibraries: vls });
+    } catch (err) {
+      console.error('Failed to load virtual libraries:', err);
     }
   },
 

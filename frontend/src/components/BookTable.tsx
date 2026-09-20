@@ -10,6 +10,9 @@ export const BookTable: React.FC = () => {
     selectedTaxonomyPath,
     selectedAuthor,
     selectedFormat,
+    selectedSeries,
+    activeVirtualLibrary,
+    virtualLibraries,
     selectedBookId,
     selectBook,
     openReader,
@@ -35,9 +38,45 @@ export const BookTable: React.FC = () => {
           .includes(selectedTaxonomyPath.toLowerCase());
         if (!matchesHeading) return false;
       }
+
+      // Series filter
+      if (selectedSeries && b.series !== selectedSeries) return false;
+
+      // Virtual library query filter
+      if (activeVirtualLibrary) {
+        const vl = virtualLibraries.find((v) => v.name === activeVirtualLibrary);
+        if (vl && vl.query.trim()) {
+          const q = vl.query.toLowerCase();
+          if (q.includes('#read_status:')) {
+            const expected = q.split('#read_status:')[1]?.split(' ')[0]?.replace(/["']/g, '');
+            const current = (b.custom_values?.read_status || '').toLowerCase();
+            if (expected && !current.includes(expected.toLowerCase())) return false;
+          }
+          if (q.includes('series:')) {
+            const expected = q.split('series:')[1]?.split(' ')[0]?.replace(/["']/g, '');
+            const current = (b.series || '').toLowerCase();
+            if (expected && !current.includes(expected.toLowerCase())) return false;
+          }
+          if (q.includes('tag:') || q.includes('tags:')) {
+            const match = q.match(/tags?:"?([^"\s]+)"?/);
+            const expected = match ? match[1].toLowerCase() : '';
+            if (expected && !b.tags.some((t) => t.toLowerCase().includes(expected))) return false;
+          }
+        }
+      }
+
       return true;
     });
-  }, [books, searchQuery, selectedAuthor, selectedFormat, selectedTaxonomyPath]);
+  }, [
+    books,
+    searchQuery,
+    selectedAuthor,
+    selectedFormat,
+    selectedTaxonomyPath,
+    selectedSeries,
+    activeVirtualLibrary,
+    virtualLibraries,
+  ]);
 
   const rowVirtualizer = useVirtualizer({
     count: filteredBooks.length,
@@ -51,7 +90,7 @@ export const BookTable: React.FC = () => {
       ref={parentRef}
       style={{
         flex: 1,
-        height: 'calc(100vh - var(--header-height) - var(--status-bar-height))',
+        height: 'calc(100vh - var(--header-height) - var(--status-bar-height) - 40px)',
         overflowY: 'auto',
         background: 'var(--bg-surface)',
       }}
@@ -68,8 +107,9 @@ export const BookTable: React.FC = () => {
           }}
         >
           <tr>
-            <th style={{ padding: '8px 16px', fontWeight: 600, width: '40%' }}>Title</th>
-            <th style={{ padding: '8px 16px', fontWeight: 600, width: '25%' }}>Authors</th>
+            <th style={{ padding: '8px 16px', fontWeight: 600, width: '30%' }}>Title</th>
+            <th style={{ padding: '8px 16px', fontWeight: 600, width: '20%' }}>Authors</th>
+            <th style={{ padding: '8px 16px', fontWeight: 600, width: '15%' }}>Series</th>
             <th style={{ padding: '8px 16px', fontWeight: 600, width: '15%' }}>Classification</th>
             <th style={{ padding: '8px 16px', fontWeight: 600, width: '10%' }}>Formats</th>
             <th style={{ padding: '8px 16px', fontWeight: 600, width: '10%' }}>Rating</th>
@@ -108,7 +148,7 @@ export const BookTable: React.FC = () => {
                 <td
                   style={{
                     padding: '0 16px',
-                    width: '40%',
+                    width: '30%',
                     fontWeight: 500,
                     color: isSelected ? 'var(--accent-primary)' : 'var(--text-primary)',
                     whiteSpace: 'nowrap',
@@ -122,7 +162,7 @@ export const BookTable: React.FC = () => {
                 <td
                   style={{
                     padding: '0 16px',
-                    width: '25%',
+                    width: '20%',
                     color: 'var(--text-secondary)',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
@@ -131,6 +171,21 @@ export const BookTable: React.FC = () => {
                   title={b.authors.join(', ')}
                 >
                   {b.authors.join(', ')}
+                </td>
+                <td
+                  style={{
+                    padding: '0 16px',
+                    width: '15%',
+                    color: 'var(--accent-primary)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                  }}
+                  title={b.series ? `${b.series} #${b.series_index || 1}` : ''}
+                >
+                  {b.series ? `${b.series} #${b.series_index || 1}` : '-'}
                 </td>
                 <td
                   style={{

@@ -8,6 +8,7 @@ import { IngestionModal } from './components/IngestionModal';
 import { RAGChatDrawer } from './components/RAGChatDrawer';
 import { StatusBar } from './components/StatusBar';
 import { SynthesisStudioModal } from './components/SynthesisStudioModal';
+import { VirtualLibraryBar } from './components/VirtualLibraryBar';
 import { useStore } from './store/useStore';
 import { ReaderView } from './views/ReaderView';
 
@@ -49,6 +50,7 @@ export const App: React.FC = () => {
 
         {/* Center Pane: Virtualized Book Cover Grid / Classic Table */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <VirtualLibraryBar />
           {viewMode === 'grid' ? <BookGrid /> : <BookTable />}
         </main>
 

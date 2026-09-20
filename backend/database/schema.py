@@ -112,6 +112,26 @@ CREATE TABLE IF NOT EXISTS comments (
     FOREIGN KEY(book) REFERENCES books(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS preferences (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT NOT NULL UNIQUE,
+    val TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS pref_key_idx ON preferences (key);
+
+CREATE TABLE IF NOT EXISTS custom_columns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    label TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    datatype TEXT NOT NULL,
+    mark_for_delete INTEGER DEFAULT 0,
+    editable INTEGER DEFAULT 1,
+    display TEXT DEFAULT '{}',
+    is_multiple INTEGER DEFAULT 0,
+    normalized INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS cc_label_idx ON custom_columns (label);
+
 -- xBookLibrary Isolated Extension Tables (Calibre-safe)
 CREATE TABLE IF NOT EXISTS x_toc_nodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

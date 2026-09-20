@@ -63,6 +63,7 @@ class Book(BaseModel):
     tags: List[str] = Field(default_factory=list)
     series_name: Optional[str] = None
     series_index: Optional[float] = 1.0
+    custom_values: Dict[str, Any] = Field(default_factory=dict)
     path: str = ""  # Relative path under library root: Author/Title (Year)
     has_cover: bool = False
     formats: List[BookFormat] = Field(default_factory=list)

@@ -43,6 +43,7 @@ export interface Book {
   formats: BookFormat[];
   classification?: BookClassification;
   is_indexed?: boolean;
+  custom_values?: Record<string, any>;
 }
 
 export interface TaxonomyNode {
@@ -193,5 +194,45 @@ export interface ConversionRequest {
   source_format?: string;
   target_format: string;
   options?: Record<string, any>;
+}
+
+export type CustomColumnDatatype =
+  | 'enumeration'
+  | 'int'
+  | 'float'
+  | 'bool'
+  | 'text'
+  | 'comments'
+  | 'rating'
+  | 'series';
+
+export interface CustomColumnDefinition {
+  id: number;
+  label: string;
+  name: string;
+  datatype: CustomColumnDatatype;
+  is_multiple: boolean;
+  normalized: boolean;
+  display: Record<string, any>;
+  editable: boolean;
+}
+
+export interface BookCustomValues {
+  book_id: number;
+  values: Record<string, any>;
+}
+
+export interface SeriesInfo {
+  id?: number;
+  name: string;
+  series_index: number;
+  book_count?: number;
+}
+
+export interface VirtualLibrary {
+  name: string;
+  query: string;
+  book_count?: number;
+  description?: string;
 }
 

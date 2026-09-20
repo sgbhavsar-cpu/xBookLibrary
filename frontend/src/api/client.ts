@@ -4,17 +4,21 @@
 
 import type {
   Book,
+  BookCustomValues,
   BookSummary,
   ChatMessage,
   ChatSession,
   ConversionJob,
   ConversionRequest,
+  CustomColumnDefinition,
   IngestionJob,
   Library,
   MetadataProposal,
+  SeriesInfo,
   SynthesisDocument,
   SynthesisJobStatus,
   TaxonomyNode,
+  VirtualLibrary,
 } from '../types';
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -241,5 +245,84 @@ export const api = {
 
   getOpdsFeedUrl(): string {
     return `${window.location.origin}/opds`;
+  },
+
+  // Custom Columns & Series & Virtual Libraries
+  async getCustomColumns(libraryId: string): Promise<CustomColumnDefinition[]> {
+    return request<CustomColumnDefinition[]>(`/api/libraries/${libraryId}/custom-columns`);
+  },
+
+  async installCustomColumnPresets(libraryId: string): Promise<CustomColumnDefinition[]> {
+    return request<CustomColumnDefinition[]>(`/api/libraries/${libraryId}/custom-columns/presets`, {
+      method: 'POST',
+    });
+  },
+
+  async createCustomColumn(
+    libraryId: string,
+    payload: { label: string; name: string; datatype: string; display?: Record<string, any> }
+  ): Promise<CustomColumnDefinition> {
+    return request<CustomColumnDefinition>(`/api/libraries/${libraryId}/custom-columns`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getBookCustomValues(bookId: number, libraryId?: string): Promise<BookCustomValues> {
+    const qs = libraryId ? `?library_id=${libraryId}` : '';
+    return request<BookCustomValues>(`/api/books/${bookId}/custom-values${qs}`);
+  },
+
+  async updateBookCustomValues(
+    bookId: number,
+    values: Record<string, any>,
+    libraryId?: string
+  ): Promise<BookCustomValues> {
+    const qs = libraryId ? `?library_id=${libraryId}` : '';
+    return request<BookCustomValues>(`/api/books/${bookId}/custom-values${qs}`, {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    });
+  },
+
+  async getSeriesList(libraryId: string): Promise<SeriesInfo[]> {
+    return request<SeriesInfo[]>(`/api/libraries/${libraryId}/series`);
+  },
+
+  async getBookSeries(bookId: number, libraryId?: string): Promise<SeriesInfo | null> {
+    const qs = libraryId ? `?library_id=${libraryId}` : '';
+    return request<SeriesInfo | null>(`/api/books/${bookId}/series${qs}`);
+  },
+
+  async updateBookSeries(
+    bookId: number,
+    payload: { name?: string; series_index?: number },
+    libraryId?: string
+  ): Promise<SeriesInfo | null> {
+    const qs = libraryId ? `?library_id=${libraryId}` : '';
+    return request<SeriesInfo | null>(`/api/books/${bookId}/series${qs}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getVirtualLibraries(libraryId: string): Promise<VirtualLibrary[]> {
+    return request<VirtualLibrary[]>(`/api/libraries/${libraryId}/virtual-libraries`);
+  },
+
+  async createVirtualLibrary(
+    libraryId: string,
+    payload: { name: string; query: string }
+  ): Promise<VirtualLibrary> {
+    return request<VirtualLibrary>(`/api/libraries/${libraryId}/virtual-libraries`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteVirtualLibrary(libraryId: string, name: string): Promise<void> {
+    await request(`/api/libraries/${libraryId}/virtual-libraries/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    });
   },
 };

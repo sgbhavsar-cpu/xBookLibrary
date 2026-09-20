@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.books_router import router as books_router
 from backend.api.conversion_router import router as conversion_router
+from backend.api.custom_columns_router import router as custom_columns_router
 from backend.api.jobs_router import router as jobs_router
 from backend.api.libraries_router import router as libraries_router
 from backend.api.opds_router import router as opds_router
@@ -54,6 +55,7 @@ app.include_router(rag_router)
 app.include_router(synthesis_router)
 app.include_router(opds_router)
 app.include_router(conversion_router)
+app.include_router(custom_columns_router)
 
 
 @app.get("/health", tags=["Health"])
