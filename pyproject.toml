@@ -23,6 +23,7 @@ dependencies = [
     "httpx>=0.28.0",
     "litellm>=1.102.0",
     "respx>=0.23.1",
+    "lancedb<=0.38.0",
 ]
 
 [project.optional-dependencies]

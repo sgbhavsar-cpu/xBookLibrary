@@ -1,0 +1,337 @@
+openapi: 3.1.0
+info:
+  title: xBookLibrary - RAG & Conversational QA API
+  version: 0.1.0
+  description: API endpoints for library-wise vector indexing, hybrid search, and citation-backed conversational QA.
+
+paths:
+  /api/libraries/{library_id}/index:
+    post:
+      summary: Trigger library-wide vector indexing job
+      parameters:
+        - name: library_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force_reindex:
+                  type: boolean
+                  default: false
+      responses:
+        '202':
+          description: Indexing job accepted and dispatched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+
+  /api/books/{book_id}/index:
+    post:
+      summary: Index or re-index a single book
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Single book indexing complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookIndexResponse'
+
+  /api/libraries/{library_id}/index/status:
+    get:
+      summary: Get indexing status and chunk metrics for a library
+      parameters:
+        - name: library_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Library index status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexStatus'
+
+  /api/libraries/{library_id}/search:
+    post:
+      summary: Perform hybrid semantic and keyword search across library
+      parameters:
+        - name: library_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Ranked search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchResult'
+
+  /api/chat/sessions:
+    get:
+      summary: List chat sessions for a library
+      parameters:
+        - name: library_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatSession'
+    post:
+      summary: Create a new conversational chat session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSession'
+
+  /api/chat/sessions/{session_id}:
+    get:
+      summary: Get session history with turns and citations
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Chat session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSession'
+    delete:
+      summary: Delete a chat session
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Session deleted
+
+  /api/chat/sessions/{session_id}/messages:
+    post:
+      summary: Send a user message and receive grounded answer with source citations
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '200':
+          description: Assistant response with verified citations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessage'
+
+components:
+  schemas:
+    JobResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+
+    BookIndexResponse:
+      type: object
+      properties:
+        book_id:
+          type: integer
+        chunks_indexed:
+          type: integer
+        status:
+          type: string
+
+    IndexStatus:
+      type: object
+      properties:
+        total_books:
+          type: integer
+        indexed_books:
+          type: integer
+        pending_books:
+          type: integer
+        total_chunks:
+          type: integer
+        last_indexed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    SearchRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+        book_id:
+          type: integer
+          nullable: true
+        top_k:
+          type: integer
+          default: 5
+        mode:
+          type: string
+          enum: [hybrid, vector, keyword]
+          default: hybrid
+
+    SearchResult:
+      type: object
+      properties:
+        chunk_id:
+          type: string
+        book_id:
+          type: integer
+        book_title:
+          type: string
+        authors:
+          type: string
+        chapter_index:
+          type: integer
+        chapter_title:
+          type: string
+        content:
+          type: string
+        score:
+          type: float
+        match_type:
+          type: string
+
+    CreateSessionRequest:
+      type: object
+      required:
+        - library_id
+      properties:
+        library_id:
+          type: string
+        book_id:
+          type: integer
+          nullable: true
+        title:
+          type: string
+          default: "New Chat"
+
+    SendMessageRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+
+    Citation:
+      type: object
+      properties:
+        book_id:
+          type: integer
+        book_title:
+          type: string
+        authors:
+          type: string
+        chapter_index:
+          type: integer
+        chapter_title:
+          type: string
+        snippet:
+          type: string
+        score:
+          type: float
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        session_id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Citation'
+        created_at:
+          type: string
+          format: date-time
+
+    ChatSession:
+      type: object
+      properties:
+        id:
+          type: string
+        library_id:
+          type: string
+        book_id:
+          type: integer
+          nullable: true
+        title:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
