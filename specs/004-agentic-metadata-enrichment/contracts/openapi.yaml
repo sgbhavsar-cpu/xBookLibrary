@@ -1,0 +1,187 @@
+openapi: 3.1.0
+info:
+  title: xBookLibrary Agentic Metadata Enrichment API
+  version: 0.1.0
+  description: Endpoints for triggering bibliographic enrichment, managing staging proposals, and visual diff reviews.
+paths:
+  /api/books/{book_id}/enrich:
+    post:
+      summary: Trigger metadata enrichment for a specific book
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Enrichment complete (auto-applied or staged)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applied:
+                    type: boolean
+                  proposal_id:
+                    type: string
+                    nullable: true
+                  status:
+                    type: string
+                    enum: [APPLIED, STAGED_FOR_REVIEW, NO_MATCH]
+
+  /api/proposals:
+    get:
+      summary: List all pending metadata proposals for the active library
+      responses:
+        "200":
+          description: List of pending review proposals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MetadataProposal'
+
+  /api/proposals/{proposal_id}:
+    get:
+      summary: Retrieve detailed side-by-side diff for a specific proposal
+      parameters:
+        - name: proposal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataProposal'
+        "404":
+          description: Proposal not found
+
+  /api/proposals/{proposal_id}/apply:
+    post:
+      summary: Apply approved fields from proposal to the book's Calibre records
+      parameters:
+        - name: proposal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                selected_cover_url:
+                  type: string
+                  nullable: true
+                field_overrides:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        "200":
+          description: Proposal successfully applied to book record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+
+  /api/proposals/{proposal_id}/discard:
+    post:
+      summary: Discard an ephemeral proposal without modifying book
+      parameters:
+        - name: proposal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Proposal discarded and staging file removed
+
+components:
+  schemas:
+    ProposedField:
+      type: object
+      properties:
+        field_name:
+          type: string
+        current_value:
+          nullable: true
+        proposed_value:
+          nullable: true
+        source:
+          type: string
+        confidence:
+          type: number
+        is_conflicting:
+          type: boolean
+
+    CoverCandidate:
+      type: object
+      properties:
+        url:
+          type: string
+          nullable: true
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        mime_type:
+          type: string
+        source:
+          type: string
+
+    MetadataProposal:
+      type: object
+      properties:
+        id:
+          type: string
+        book_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [PENDING, APPROVED, DISCARDED]
+        is_exact_isbn:
+          type: boolean
+        composite_confidence:
+          type: number
+        fields:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ProposedField'
+        candidate_covers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CoverCandidate'
+
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        publisher:
+          type: string
+          nullable: true
+        publication_year:
+          type: integer
+          nullable: true
+        isbn:
+          type: string
+          nullable: true
