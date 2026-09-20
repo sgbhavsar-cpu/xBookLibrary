@@ -13,6 +13,7 @@ from backend.api.books_router import router as books_router
 from backend.api.jobs_router import router as jobs_router
 from backend.api.libraries_router import router as libraries_router
 from backend.api.proposals_router import router as proposals_router
+from backend.api.summaries_router import router as summaries_router
 from backend.api.taxonomies_router import router as taxonomies_router
 
 
@@ -44,6 +45,7 @@ app.include_router(books_router)
 app.include_router(jobs_router)
 app.include_router(proposals_router)
 app.include_router(taxonomies_router)
+app.include_router(summaries_router)
 
 
 @app.get("/health", tags=["Health"])

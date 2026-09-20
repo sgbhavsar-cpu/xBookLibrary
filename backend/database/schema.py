@@ -216,4 +216,21 @@ CREATE TABLE IF NOT EXISTS x_books_bookshelves_link (
     UNIQUE(book_id, bookshelf_id)
 );
 CREATE INDEX IF NOT EXISTS bbl_shelf_idx ON x_books_bookshelves_link (bookshelf_id, book_id);
+
+-- Multi-Resolution AI Book Summaries
+CREATE TABLE IF NOT EXISTS x_summaries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL UNIQUE,
+    executive_snapshot TEXT NOT NULL,
+    chapters TEXT NOT NULL,
+    conceptual_index TEXT NOT NULL,
+    metadata TEXT NOT NULL,
+    model_name TEXT NOT NULL,
+    word_count INTEGER DEFAULT 0,
+    duration_seconds REAL DEFAULT 0.0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS summaries_book_idx ON x_summaries (book_id);
 """
