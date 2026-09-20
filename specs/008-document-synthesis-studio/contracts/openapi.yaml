@@ -1,0 +1,206 @@
+openapi: 3.1.0
+info:
+  title: xBookLibrary - Document Synthesis Studio API
+  version: 0.1.0
+  description: REST API for multi-book synthesis briefs, literature reviews, and grounded document exports.
+
+paths:
+  /api/synthesis/generate:
+    post:
+      summary: Trigger multi-book document synthesis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateSynthesisRequest'
+      responses:
+        '202':
+          description: Synthesis job queued and running in background
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SynthesisJobStatus'
+        '200':
+          description: Synchronous synthesis complete (if wait=true)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SynthesisDocument'
+
+  /api/synthesis/jobs/{job_id}:
+    get:
+      summary: Poll status and progress of a synthesis job
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Current job progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SynthesisJobStatus'
+
+  /api/synthesis/documents:
+    get:
+      summary: List all synthesized research documents in library
+      parameters:
+        - name: library_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SynthesisDocument'
+
+  /api/synthesis/documents/{document_id}:
+    get:
+      summary: Retrieve a full synthesized research document
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SynthesisDocument'
+    delete:
+      summary: Delete a synthesized document
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Document deleted
+
+  /api/synthesis/documents/{document_id}/export:
+    get:
+      summary: Export document as Markdown, styled HTML, or JSON
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [markdown, html, json]
+            default: markdown
+      responses:
+        '200':
+          description: Formatted document file stream
+
+components:
+  schemas:
+    GenerateSynthesisRequest:
+      type: object
+      required:
+        - title
+        - topic_prompt
+      properties:
+        title:
+          type: string
+        topic_prompt:
+          type: string
+        template_type:
+          type: string
+          enum: [topic_brief, literature_review, executive_summary, custom_research]
+          default: topic_brief
+        book_ids:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        library_id:
+          type: string
+          nullable: true
+        wait:
+          type: boolean
+          default: false
+
+    SynthesisSource:
+      type: object
+      properties:
+        book_id:
+          type: integer
+        book_title:
+          type: string
+        authors:
+          type: string
+        chapters_cited:
+          type: array
+          items:
+            type: string
+
+    SynthesisDocument:
+      type: object
+      properties:
+        id:
+          type: string
+        library_id:
+          type: string
+        title:
+          type: string
+        template_type:
+          type: string
+        topic_prompt:
+          type: string
+        outline:
+          type: array
+          items:
+            type: string
+        content_markdown:
+          type: string
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SynthesisSource'
+        word_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SynthesisJobStatus:
+      type: object
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        stage:
+          type: string
+        percent_complete:
+          type: integer
+        document_id:
+          type: string
+          nullable: true
+        error:
+          type: string
+          nullable: true
