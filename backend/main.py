@@ -15,6 +15,7 @@ from backend.api.libraries_router import router as libraries_router
 from backend.api.proposals_router import router as proposals_router
 from backend.api.rag_router import router as rag_router
 from backend.api.summaries_router import router as summaries_router
+from backend.api.synthesis_router import router as synthesis_router
 from backend.api.taxonomies_router import router as taxonomies_router
 
 
@@ -48,6 +49,7 @@ app.include_router(proposals_router)
 app.include_router(taxonomies_router)
 app.include_router(summaries_router)
 app.include_router(rag_router)
+app.include_router(synthesis_router)
 
 
 @app.get("/health", tags=["Health"])

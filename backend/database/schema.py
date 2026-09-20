@@ -270,4 +270,20 @@ CREATE TABLE IF NOT EXISTS x_chat_messages (
     FOREIGN KEY(session_id) REFERENCES x_chat_sessions(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_x_chat_messages_session ON x_chat_messages (session_id);
+
+-- Synthesized Research Documents & Knowledge Briefs
+CREATE TABLE IF NOT EXISTS x_synthesis_documents (
+    id TEXT PRIMARY KEY,
+    library_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    template_type TEXT NOT NULL,
+    topic_prompt TEXT NOT NULL,
+    outline_json TEXT NOT NULL DEFAULT '[]',
+    content_markdown TEXT NOT NULL,
+    sources_json TEXT NOT NULL DEFAULT '[]',
+    word_count INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_x_synthesis_documents_library ON x_synthesis_documents (library_id);
 """
