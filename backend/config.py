@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
+from backend.domain.devices import SMTPSettings
 from backend.domain.entities import Library
 
 
@@ -15,6 +16,7 @@ class UserPreferences(BaseModel):
     gemini_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
     ollama_endpoint: str = "http://localhost:11434"
+    smtp_settings: SMTPSettings = Field(default_factory=SMTPSettings)
 
 
 class AppConfig(BaseModel):

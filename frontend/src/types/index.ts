@@ -304,3 +304,55 @@ export interface ComicManifest {
   issue_number?: number;
 }
 
+export type DeviceType = 'kindle' | 'kobo' | 'koreader' | 'usb';
+export type DeviceSyncStatus = 'pending' | 'in_flight' | 'completed' | 'failed';
+
+export interface Device {
+  id: string;
+  name: string;
+  device_type: DeviceType;
+  target_address?: string;
+  auth_token?: string;
+  created_at: string;
+  last_sync_at?: string;
+}
+
+export interface DeviceCreateRequest {
+  name: string;
+  device_type: DeviceType;
+  target_address?: string;
+}
+
+export interface DeviceSyncLog {
+  id: string;
+  book_id: number;
+  book_title: string;
+  device_id?: string;
+  device_type: DeviceType;
+  format_sent: string;
+  status: DeviceSyncStatus;
+  error_message?: string;
+  created_at: string;
+}
+
+export interface SendToDeviceRequest {
+  device_id?: string;
+  custom_recipient?: string;
+  preferred_format?: string;
+}
+
+export interface ExportToDirectoryRequest {
+  target_directory: string;
+  format?: string;
+}
+
+export interface SMTPSettings {
+  host: string;
+  port: number;
+  username: string;
+  password?: string;
+  use_tls: boolean;
+  use_ssl: boolean;
+  sender_email: string;
+}
+

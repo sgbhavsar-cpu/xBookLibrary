@@ -8,6 +8,7 @@ import {
   Layers,
   RefreshCw,
   Repeat,
+  Send,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ export const DetailInspector: React.FC = () => {
     activeLibraryId,
     loadBooks,
     loadSeriesList,
+    setSendToDeviceOpen,
   } = useStore();
 
   const [isEnriching, setIsEnriching] = useState(false);
@@ -270,6 +272,17 @@ export const DetailInspector: React.FC = () => {
                 <span>{isIndexing ? 'Indexing...' : 'Index for RAG'}</span>
               </>
             )}
+          </button>
+
+          {/* Send to Device Action */}
+          <button
+            className="btn btn-secondary"
+            onClick={() => setSendToDeviceOpen(true)}
+            style={{ width: '100%' }}
+            title="Send to Kindle or export to USB drive"
+          >
+            <Send size={14} color="var(--accent-primary)" />
+            <span>Send to Device</span>
           </button>
 
           {/* Agentic Metadata Enrichment Action */}

@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Moon,
   Search,
+  Smartphone,
   Sparkles,
   Sun,
   UploadCloud,
@@ -31,6 +32,7 @@ export const HeaderToolbar: React.FC = () => {
     setRAGChatOpen,
     setSynthesisModalOpen,
     setIngestModalOpen,
+    setDeviceSettingsOpen,
   } = useStore();
 
   return (
@@ -196,6 +198,17 @@ export const HeaderToolbar: React.FC = () => {
         >
           <Wifi size={15} color="#10b981" />
           <span>OPDS Feed</span>
+        </button>
+
+        {/* E-Reader & Device Sync */}
+        <button
+          className="btn btn-secondary"
+          onClick={() => setDeviceSettingsOpen(true)}
+          title="Configure Kindle, Kobo, and KOReader e-reader sync"
+          style={{ borderColor: 'rgba(139, 92, 246, 0.4)' }}
+        >
+          <Smartphone size={15} color="#8b5cf6" />
+          <span>Devices</span>
         </button>
 
         {/* RAG QA Chat Launcher */}

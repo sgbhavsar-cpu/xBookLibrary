@@ -12,7 +12,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api.books_router import router as books_router
 from backend.api.conversion_router import router as conversion_router
 from backend.api.custom_columns_router import router as custom_columns_router
+from backend.api.devices_router import router as devices_router
 from backend.api.jobs_router import router as jobs_router
+from backend.api.kobo_sync_router import router as kobo_sync_router
+from backend.api.kosync_router import router as kosync_router
 from backend.api.libraries_router import router as libraries_router
 from backend.api.opds_router import router as opds_router
 from backend.api.proposals_router import router as proposals_router
@@ -58,6 +61,9 @@ app.include_router(opds_router)
 app.include_router(conversion_router)
 app.include_router(custom_columns_router)
 app.include_router(reader_router)
+app.include_router(devices_router)
+app.include_router(kobo_sync_router)
+app.include_router(kosync_router)
 
 
 @app.get("/health", tags=["Health"])

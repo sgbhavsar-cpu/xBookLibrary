@@ -16,12 +16,18 @@ import type {
   ConversionJob,
   ConversionRequest,
   CustomColumnDefinition,
+  Device,
+  DeviceCreateRequest,
+  DeviceSyncLog,
+  ExportToDirectoryRequest,
   IngestionJob,
   Library,
   MetadataProposal,
   ReadingProgress,
   ReadingProgressCreateRequest,
+  SendToDeviceRequest,
   SeriesInfo,
+  SMTPSettings,
   SynthesisDocument,
   SynthesisJobStatus,
   TaxonomyNode,
@@ -437,5 +443,72 @@ export const api = {
 
   getComicPageUrl(libraryId: string, bookId: number, pageIndex: number): string {
     return `/api/libraries/${libraryId}/books/${bookId}/comic/pages/${pageIndex}`;
+  },
+
+  // --- Devices & E-Reader Sync ---
+  async listDevices(libraryId: string): Promise<Device[]> {
+    return request<Device[]>(`/api/libraries/${libraryId}/devices`);
+  },
+
+  async createDevice(libraryId: string, req: DeviceCreateRequest): Promise<Device> {
+    return request<Device>(`/api/libraries/${libraryId}/devices`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  },
+
+  async deleteDevice(libraryId: string, deviceId: string): Promise<void> {
+    await request(`/api/libraries/${libraryId}/devices/${deviceId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async sendToDevice(
+    libraryId: string,
+    bookId: number,
+    req: SendToDeviceRequest
+  ): Promise<DeviceSyncLog> {
+    return request<DeviceSyncLog>(`/api/libraries/${libraryId}/books/${bookId}/send`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  },
+
+  async exportToDirectory(
+    libraryId: string,
+    bookId: number,
+    req: ExportToDirectoryRequest
+  ): Promise<{ exported_path: string }> {
+    return request<{ exported_path: string }>(
+      `/api/libraries/${libraryId}/books/${bookId}/export`,
+      {
+        method: 'POST',
+        body: JSON.stringify(req),
+      }
+    );
+  },
+
+  async listSyncLogs(libraryId: string, limit: number = 50): Promise<DeviceSyncLog[]> {
+    return request<DeviceSyncLog[]>(
+      `/api/libraries/${libraryId}/devices/logs?limit=${limit}`
+    );
+  },
+
+  async getSmtpSettings(): Promise<SMTPSettings> {
+    return request<SMTPSettings>('/api/settings/smtp');
+  },
+
+  async updateSmtpSettings(settings: SMTPSettings): Promise<SMTPSettings> {
+    return request<SMTPSettings>('/api/settings/smtp', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  },
+
+  async testSmtpSettings(settings?: SMTPSettings): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>('/api/settings/smtp/test', {
+      method: 'POST',
+      body: settings ? JSON.stringify(settings) : undefined,
+    });
   },
 };

@@ -9,6 +9,8 @@ import { RAGChatDrawer } from './components/RAGChatDrawer';
 import { StatusBar } from './components/StatusBar';
 import { SynthesisStudioModal } from './components/SynthesisStudioModal';
 import { VirtualLibraryBar } from './components/VirtualLibraryBar';
+import { SendToDeviceModal } from './components/devices/SendToDeviceModal';
+import { DeviceSettingsModal } from './components/devices/DeviceSettingsModal';
 import { useStore } from './store/useStore';
 import { ReaderView } from './views/ReaderView';
 
@@ -65,6 +67,8 @@ export const App: React.FC = () => {
       <RAGChatDrawer />
       <SynthesisStudioModal />
       <IngestionModal />
+      <SendToDeviceModal />
+      <DeviceSettingsModal />
     </div>
   );
 };

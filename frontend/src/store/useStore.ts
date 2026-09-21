@@ -12,6 +12,8 @@ import type {
   BookmarkCreateRequest,
   BookSummary,
   CustomColumnDefinition,
+  Device,
+  DeviceSyncLog,
   Library,
   MetadataProposal,
   ReadingProgress,
@@ -103,9 +105,19 @@ interface AppStore {
   isRAGChatOpen: boolean;
   isSynthesisModalOpen: boolean;
   isIngestModalOpen: boolean;
+  isSendToDeviceOpen: boolean;
+  isDeviceSettingsOpen: boolean;
   setRAGChatOpen: (open: boolean) => void;
   setSynthesisModalOpen: (open: boolean) => void;
   setIngestModalOpen: (open: boolean) => void;
+  setSendToDeviceOpen: (open: boolean) => void;
+  setDeviceSettingsOpen: (open: boolean) => void;
+
+  // Devices & E-Reader Sync
+  devices: Device[];
+  deviceSyncLogs: DeviceSyncLog[];
+  loadDevices: () => Promise<void>;
+  loadSyncLogs: () => Promise<void>;
 }
 
 const initialTheme = (localStorage.getItem('xbook_theme') as 'light' | 'dark') || 'dark';
@@ -447,7 +459,35 @@ export const useStore = create<AppStore>((set, get) => ({
   isRAGChatOpen: false,
   isSynthesisModalOpen: false,
   isIngestModalOpen: false,
+  isSendToDeviceOpen: false,
+  isDeviceSettingsOpen: false,
   setRAGChatOpen: (open) => set({ isRAGChatOpen: open }),
   setSynthesisModalOpen: (open) => set({ isSynthesisModalOpen: open }),
   setIngestModalOpen: (open) => set({ isIngestModalOpen: open }),
+  setSendToDeviceOpen: (open) => set({ isSendToDeviceOpen: open }),
+  setDeviceSettingsOpen: (open) => set({ isDeviceSettingsOpen: open }),
+
+  // Devices & E-Reader Sync
+  devices: [],
+  deviceSyncLogs: [],
+  loadDevices: async () => {
+    const libId = get().activeLibraryId;
+    if (!libId) return;
+    try {
+      const devices = await api.listDevices(libId);
+      set({ devices });
+    } catch (err) {
+      console.error('Failed to load devices:', err);
+    }
+  },
+  loadSyncLogs: async () => {
+    const libId = get().activeLibraryId;
+    if (!libId) return;
+    try {
+      const logs = await api.listSyncLogs(libId);
+      set({ deviceSyncLogs: logs });
+    } catch (err) {
+      console.error('Failed to load sync logs:', err);
+    }
+  },
 }));

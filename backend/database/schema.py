@@ -346,5 +346,39 @@ CREATE TABLE IF NOT EXISTS x_bookmarks (
     FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_x_bookmarks_book ON x_bookmarks (book_id);
+
+-- Send-to-Device & Wireless E-Reader Sync Extension Tables
+CREATE TABLE IF NOT EXISTS x_devices (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    device_type TEXT NOT NULL,
+    target_address TEXT,
+    auth_token TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_sync_at DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS x_device_sync_logs (
+    id TEXT PRIMARY KEY,
+    book_id INTEGER NOT NULL,
+    book_title TEXT NOT NULL,
+    device_id TEXT,
+    device_type TEXT NOT NULL,
+    format_sent TEXT NOT NULL,
+    status TEXT NOT NULL,
+    error_message TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(device_id) REFERENCES x_devices(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_x_device_sync_logs_book ON x_device_sync_logs (book_id);
+
+CREATE TABLE IF NOT EXISTS x_kosync_progress (
+    document_hash TEXT PRIMARY KEY,
+    progress TEXT NOT NULL,
+    percentage REAL NOT NULL,
+    device TEXT,
+    device_id TEXT,
+    updated_at INTEGER NOT NULL
+);
 """
 
