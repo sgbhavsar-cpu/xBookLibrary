@@ -306,4 +306,45 @@ CREATE TABLE IF NOT EXISTS x_synthesis_documents (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_x_synthesis_documents_library ON x_synthesis_documents (library_id);
+
+-- In-Browser Web Reader & Reading Progress Sync
+CREATE TABLE IF NOT EXISTS x_reading_progress (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL,
+    format TEXT NOT NULL,
+    location TEXT NOT NULL,
+    progress_percent REAL NOT NULL DEFAULT 0.0,
+    total_seconds INTEGER NOT NULL DEFAULT 0,
+    last_read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE,
+    UNIQUE(book_id, format)
+);
+CREATE INDEX IF NOT EXISTS idx_x_reading_progress_book ON x_reading_progress (book_id);
+
+CREATE TABLE IF NOT EXISTS x_annotations (
+    id TEXT PRIMARY KEY,
+    book_id INTEGER NOT NULL,
+    format TEXT NOT NULL,
+    location TEXT NOT NULL,
+    selected_text TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT 'yellow',
+    note_text TEXT,
+    chapter_title TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_x_annotations_book ON x_annotations (book_id);
+
+CREATE TABLE IF NOT EXISTS x_bookmarks (
+    id TEXT PRIMARY KEY,
+    book_id INTEGER NOT NULL,
+    format TEXT NOT NULL,
+    location TEXT NOT NULL,
+    title TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_x_bookmarks_book ON x_bookmarks (book_id);
 """
+

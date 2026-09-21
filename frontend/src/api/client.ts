@@ -3,17 +3,24 @@
  */
 
 import type {
+  Annotation,
+  AnnotationCreateRequest,
   Book,
   BookCustomValues,
+  Bookmark,
+  BookmarkCreateRequest,
   BookSummary,
   ChatMessage,
   ChatSession,
+  ComicManifest,
   ConversionJob,
   ConversionRequest,
   CustomColumnDefinition,
   IngestionJob,
   Library,
   MetadataProposal,
+  ReadingProgress,
+  ReadingProgressCreateRequest,
   SeriesInfo,
   SynthesisDocument,
   SynthesisJobStatus,
@@ -324,5 +331,111 @@ export const api = {
     await request(`/api/libraries/${libraryId}/virtual-libraries/${encodeURIComponent(name)}`, {
       method: 'DELETE',
     });
+  },
+
+  // Reading Progress, Annotations, Bookmarks & Comics
+  async getReadingProgress(
+    libraryId: string,
+    bookId: number,
+    format?: string
+  ): Promise<ReadingProgress | null> {
+    const qs = format ? `?format=${encodeURIComponent(format)}` : '';
+    return request<ReadingProgress | null>(
+      `/api/libraries/${libraryId}/books/${bookId}/progress${qs}`
+    );
+  },
+
+  async saveReadingProgress(
+    libraryId: string,
+    bookId: number,
+    payload: ReadingProgressCreateRequest
+  ): Promise<ReadingProgress> {
+    return request<ReadingProgress>(
+      `/api/libraries/${libraryId}/books/${bookId}/progress`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+
+  async getAnnotations(libraryId: string, bookId: number): Promise<Annotation[]> {
+    return request<Annotation[]>(
+      `/api/libraries/${libraryId}/books/${bookId}/annotations`
+    );
+  },
+
+  async createAnnotation(
+    libraryId: string,
+    bookId: number,
+    payload: AnnotationCreateRequest
+  ): Promise<Annotation> {
+    return request<Annotation>(
+      `/api/libraries/${libraryId}/books/${bookId}/annotations`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+
+  async deleteAnnotation(
+    libraryId: string,
+    bookId: number,
+    annotationId: string
+  ): Promise<void> {
+    await request(
+      `/api/libraries/${libraryId}/books/${bookId}/annotations/${annotationId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+  },
+
+  getAnnotationsExportUrl(libraryId: string, bookId: number): string {
+    return `/api/libraries/${libraryId}/books/${bookId}/annotations/export`;
+  },
+
+  async getBookmarks(libraryId: string, bookId: number): Promise<Bookmark[]> {
+    return request<Bookmark[]>(
+      `/api/libraries/${libraryId}/books/${bookId}/bookmarks`
+    );
+  },
+
+  async createBookmark(
+    libraryId: string,
+    bookId: number,
+    payload: BookmarkCreateRequest
+  ): Promise<Bookmark> {
+    return request<Bookmark>(
+      `/api/libraries/${libraryId}/books/${bookId}/bookmarks`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+
+  async deleteBookmark(
+    libraryId: string,
+    bookId: number,
+    bookmarkId: string
+  ): Promise<void> {
+    await request(
+      `/api/libraries/${libraryId}/books/${bookId}/bookmarks/${bookmarkId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+  },
+
+  async getComicManifest(libraryId: string, bookId: number): Promise<ComicManifest> {
+    return request<ComicManifest>(
+      `/api/libraries/${libraryId}/books/${bookId}/comic/manifest`
+    );
+  },
+
+  getComicPageUrl(libraryId: string, bookId: number, pageIndex: number): string {
+    return `/api/libraries/${libraryId}/books/${bookId}/comic/pages/${pageIndex}`;
   },
 };

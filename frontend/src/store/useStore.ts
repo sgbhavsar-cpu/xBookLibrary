@@ -5,11 +5,16 @@
 import { create } from 'zustand';
 import { api } from '../api/client';
 import type {
+  Annotation,
+  AnnotationCreateRequest,
   Book,
+  Bookmark,
+  BookmarkCreateRequest,
   BookSummary,
   CustomColumnDefinition,
   Library,
   MetadataProposal,
+  ReadingProgress,
   SeriesInfo,
   TaxonomyNode,
   VirtualLibrary,
@@ -72,12 +77,27 @@ interface AppStore {
   readerFormat: string | null;
   readerTheme: 'light' | 'sepia' | 'dark' | 'black';
   readerFontSize: number;
+  readerLayout: 'paginated' | 'scrolled';
+  readerComicMode: 'ltr' | 'rtl' | 'webtoon';
+  readerProgress: ReadingProgress | null;
+  readerAnnotations: Annotation[];
+  readerBookmarks: Bookmark[];
+  isAnnotationsDrawerOpen: boolean;
   isReaderAIOpen: boolean;
   openReader: (bookId: number, format?: string) => void;
   closeReader: () => void;
   setReaderTheme: (theme: 'light' | 'sepia' | 'dark' | 'black') => void;
   setReaderFontSize: (size: number) => void;
+  setReaderLayout: (layout: 'paginated' | 'scrolled') => void;
+  setReaderComicMode: (mode: 'ltr' | 'rtl' | 'webtoon') => void;
+  toggleAnnotationsDrawer: () => void;
   toggleReaderAI: () => void;
+  loadReaderData: (bookId: number, format?: string) => Promise<void>;
+  saveProgress: (location: string, percent: number, secondsIncrement?: number) => Promise<void>;
+  addAnnotation: (req: AnnotationCreateRequest) => Promise<void>;
+  removeAnnotation: (annotationId: string) => Promise<void>;
+  addBookmark: (req: BookmarkCreateRequest) => Promise<void>;
+  removeBookmark: (bookmarkId: string) => Promise<void>;
 
   // Global Modals & Drawers
   isRAGChatOpen: boolean;
@@ -291,20 +311,137 @@ export const useStore = create<AppStore>((set, get) => ({
   readerFormat: null,
   readerTheme: 'dark',
   readerFontSize: 18,
+  readerLayout: 'paginated',
+  readerComicMode: 'ltr',
+  readerProgress: null,
+  readerAnnotations: [],
+  readerBookmarks: [],
+  isAnnotationsDrawerOpen: false,
   isReaderAIOpen: false,
 
   openReader: (bookId: number, format?: string) => {
+    const fmt = format || 'EPUB';
     set({
       readerBookId: bookId,
-      readerFormat: format || 'EPUB',
+      readerFormat: fmt,
+      readerProgress: null,
+      readerAnnotations: [],
+      readerBookmarks: [],
+      isAnnotationsDrawerOpen: false,
     });
+    get().loadReaderData(bookId, fmt);
   },
   closeReader: () => {
-    set({ readerBookId: null, readerFormat: null, isReaderAIOpen: false });
+    set({
+      readerBookId: null,
+      readerFormat: null,
+      readerProgress: null,
+      readerAnnotations: [],
+      readerBookmarks: [],
+      isAnnotationsDrawerOpen: false,
+      isReaderAIOpen: false,
+    });
   },
   setReaderTheme: (theme) => set({ readerTheme: theme }),
   setReaderFontSize: (size) => set({ readerFontSize: size }),
+  setReaderLayout: (layout) => set({ readerLayout: layout }),
+  setReaderComicMode: (mode) => set({ readerComicMode: mode }),
+  toggleAnnotationsDrawer: () =>
+    set((state) => ({ isAnnotationsDrawerOpen: !state.isAnnotationsDrawerOpen })),
   toggleReaderAI: () => set((state) => ({ isReaderAIOpen: !state.isReaderAIOpen })),
+
+  loadReaderData: async (bookId: number, format?: string) => {
+    const libId = get().activeLibraryId;
+    if (!libId) return;
+    try {
+      const [prog, anns, bms] = await Promise.all([
+        api.getReadingProgress(libId, bookId, format),
+        api.getAnnotations(libId, bookId),
+        api.getBookmarks(libId, bookId),
+      ]);
+      set({
+        readerProgress: prog,
+        readerAnnotations: anns,
+        readerBookmarks: bms,
+      });
+    } catch (err) {
+      console.error('Failed to load reader data:', err);
+    }
+  },
+
+  saveProgress: async (location: string, percent: number, secondsIncrement = 0) => {
+    const libId = get().activeLibraryId;
+    const bookId = get().readerBookId;
+    const format = get().readerFormat || 'EPUB';
+    if (!libId || !bookId) return;
+    try {
+      const updated = await api.saveReadingProgress(libId, bookId, {
+        format,
+        location,
+        progress_percent: percent,
+        seconds_increment: secondsIncrement,
+      });
+      set({ readerProgress: updated });
+    } catch (err) {
+      console.error('Failed to save reading progress:', err);
+    }
+  },
+
+  addAnnotation: async (req: AnnotationCreateRequest) => {
+    const libId = get().activeLibraryId;
+    const bookId = get().readerBookId;
+    if (!libId || !bookId) return;
+    try {
+      const created = await api.createAnnotation(libId, bookId, req);
+      set((state) => ({
+        readerAnnotations: [...state.readerAnnotations, created],
+      }));
+    } catch (err) {
+      console.error('Failed to create annotation:', err);
+    }
+  },
+
+  removeAnnotation: async (annotationId: string) => {
+    const libId = get().activeLibraryId;
+    const bookId = get().readerBookId;
+    if (!libId || !bookId) return;
+    try {
+      await api.deleteAnnotation(libId, bookId, annotationId);
+      set((state) => ({
+        readerAnnotations: state.readerAnnotations.filter((a) => a.id !== annotationId),
+      }));
+    } catch (err) {
+      console.error('Failed to delete annotation:', err);
+    }
+  },
+
+  addBookmark: async (req: BookmarkCreateRequest) => {
+    const libId = get().activeLibraryId;
+    const bookId = get().readerBookId;
+    if (!libId || !bookId) return;
+    try {
+      const created = await api.createBookmark(libId, bookId, req);
+      set((state) => ({
+        readerBookmarks: [...state.readerBookmarks, created],
+      }));
+    } catch (err) {
+      console.error('Failed to create bookmark:', err);
+    }
+  },
+
+  removeBookmark: async (bookmarkId: string) => {
+    const libId = get().activeLibraryId;
+    const bookId = get().readerBookId;
+    if (!libId || !bookId) return;
+    try {
+      await api.deleteBookmark(libId, bookId, bookmarkId);
+      set((state) => ({
+        readerBookmarks: state.readerBookmarks.filter((b) => b.id !== bookmarkId),
+      }));
+    } catch (err) {
+      console.error('Failed to delete bookmark:', err);
+    }
+  },
 
   // Modals & Drawers
   isRAGChatOpen: false,

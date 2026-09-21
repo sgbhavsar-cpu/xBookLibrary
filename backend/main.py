@@ -17,6 +17,7 @@ from backend.api.libraries_router import router as libraries_router
 from backend.api.opds_router import router as opds_router
 from backend.api.proposals_router import router as proposals_router
 from backend.api.rag_router import router as rag_router
+from backend.api.reader_router import router as reader_router
 from backend.api.summaries_router import router as summaries_router
 from backend.api.synthesis_router import router as synthesis_router
 from backend.api.taxonomies_router import router as taxonomies_router
@@ -56,6 +57,7 @@ app.include_router(synthesis_router)
 app.include_router(opds_router)
 app.include_router(conversion_router)
 app.include_router(custom_columns_router)
+app.include_router(reader_router)
 
 
 @app.get("/health", tags=["Health"])

@@ -182,7 +182,7 @@ export const DetailInspector: React.FC = () => {
   };
 
   const primaryFormat = selectedBook.formats.find(
-    (f) => f.format === 'EPUB' || f.format === 'PDF'
+    (f) => ['EPUB', 'PDF', 'CBZ', 'CBR'].includes(f.format.toUpperCase())
   ) || selectedBook.formats[0];
 
   return (
@@ -480,18 +480,34 @@ export const DetailInspector: React.FC = () => {
           Available Formats
         </div>
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {selectedBook.formats.map((fmt) => (
-            <a
-              key={fmt.format}
-              href={api.getBookDownloadUrl(selectedBook.id, fmt.format)}
-              download
-              className="btn btn-secondary"
-              style={{ fontSize: '11.5px', padding: '4px 8px' }}
-            >
-              <Download size={12} />
-              <span>{fmt.format} ({Math.round(fmt.uncompressed_size / 1024)} KB)</span>
-            </a>
-          ))}
+          {selectedBook.formats.map((fmt) => {
+            const canRead = ['EPUB', 'PDF', 'CBZ', 'CBR'].includes(fmt.format.toUpperCase());
+            return (
+              <div key={fmt.format} style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                {canRead && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => openReader(selectedBook.id, fmt.format)}
+                    style={{ fontSize: '11.5px', padding: '4px 8px', color: 'var(--accent-primary)' }}
+                    title={`Read ${fmt.format}`}
+                  >
+                    <BookOpen size={12} />
+                    <span>Read {fmt.format}</span>
+                  </button>
+                )}
+                <a
+                  href={api.getBookDownloadUrl(selectedBook.id, fmt.format)}
+                  download
+                  className="btn btn-secondary"
+                  style={{ fontSize: '11.5px', padding: '4px 8px' }}
+                  title="Download File"
+                >
+                  <Download size={12} />
+                  <span>({Math.round(fmt.uncompressed_size / 1024)} KB)</span>
+                </a>
+              </div>
+            );
+          })}
         </div>
 
         {/* Format Conversion Controls */}

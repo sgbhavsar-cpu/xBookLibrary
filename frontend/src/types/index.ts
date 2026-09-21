@@ -236,3 +236,71 @@ export interface VirtualLibrary {
   description?: string;
 }
 
+export interface ReadingProgress {
+  id?: number;
+  book_id: number;
+  format: string;
+  location: string;
+  progress_percent: number;
+  total_seconds: number;
+  last_read_at?: string;
+}
+
+export interface ReadingProgressCreateRequest {
+  format: string;
+  location: string;
+  progress_percent: number;
+  seconds_increment?: number;
+}
+
+export interface Annotation {
+  id: string;
+  book_id: number;
+  format: string;
+  location: string;
+  selected_text: string;
+  color: string;
+  note_text?: string;
+  chapter_title?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AnnotationCreateRequest {
+  format: string;
+  location: string;
+  selected_text: string;
+  color?: string;
+  note_text?: string;
+  chapter_title?: string;
+}
+
+export interface Bookmark {
+  id: string;
+  book_id: number;
+  format: string;
+  location: string;
+  title: string;
+  created_at?: string;
+}
+
+export interface BookmarkCreateRequest {
+  format: string;
+  location: string;
+  title: string;
+}
+
+export interface ComicPageInfo {
+  index: number;
+  filename: string;
+  url: string;
+}
+
+export interface ComicManifest {
+  book_id: number;
+  total_pages: number;
+  pages: ComicPageInfo[];
+  series_name?: string;
+  issue_number?: number;
+}
+
