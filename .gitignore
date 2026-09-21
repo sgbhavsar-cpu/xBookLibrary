@@ -23,3 +23,4 @@ scratch/
 
 # Calibre test outputs
 *.epub.tmp
+sample_library/
