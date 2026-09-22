@@ -17,11 +17,14 @@ import type {
   CustomColumnDefinition,
   Device,
   DeviceSyncLog,
+  FilterState,
   Library,
   MetadataProposal,
   ReadingProgress,
   SeriesInfo,
+  TagTreeFilter,
   TaxonomyNode,
+  UserPreferences,
   VirtualLibrary,
 } from '../types';
 
@@ -49,6 +52,16 @@ interface AppStore {
   selectedFormat: string | null;
   selectedSeries: string | null;
   taxonomyTree: TaxonomyNode[];
+
+  // Calibre Tag Tree Tri-State Filter State
+  tagTreeFilter: TagTreeFilter;
+  tagTreeSearchQuery: string;
+  tagTreeSortBy: 'name' | 'count';
+  cycleTagFilter: (category: string, value: string) => void;
+  setTagFilter: (category: string, value: string, state: FilterState | null) => void;
+  clearTagTreeFilters: () => void;
+  setTagTreeSearchQuery: (query: string) => void;
+  setTagTreeSortBy: (sortBy: 'name' | 'count') => void;
 
   // Custom Columns & Virtual Libraries & Series
   customColumns: CustomColumnDefinition[];
@@ -110,11 +123,36 @@ interface AppStore {
   isIngestModalOpen: boolean;
   isSendToDeviceOpen: boolean;
   isDeviceSettingsOpen: boolean;
+  isEditMetadataOpen: boolean;
+  isBulkEditOpen: boolean;
   setRAGChatOpen: (open: boolean) => void;
   setSynthesisModalOpen: (open: boolean) => void;
   setIngestModalOpen: (open: boolean) => void;
   setSendToDeviceOpen: (open: boolean) => void;
   setDeviceSettingsOpen: (open: boolean) => void;
+  setEditMetadataOpen: (open: boolean) => void;
+  setBulkEditOpen: (open: boolean) => void;
+  isConversionModalOpen: boolean;
+  conversionTargetBookIds: number[];
+  openConversionModal: (bookIds?: number[]) => void;
+  closeConversionModal: () => void;
+  isManageLibrariesOpen: boolean;
+  setManageLibrariesOpen: (open: boolean) => void;
+  isPreferencesOpen: boolean;
+  setPreferencesOpen: (open: boolean) => void;
+  userPreferences: UserPreferences | null;
+  loadPreferences: () => Promise<void>;
+  savePreferences: (pref: UserPreferences) => Promise<void>;
+  deleteBook: (bookId: number) => Promise<void>;
+  bulkDeleteBooks: (bookIds: number[]) => Promise<void>;
+
+  // Multi-Book Selection & Notifications (Feature 015)
+  selectedBookIds: number[];
+  toggleSelectBookId: (id: number) => void;
+  selectAllBooks: () => void;
+  clearSelectedBooks: () => void;
+  toastMessage: string | null;
+  setToastMessage: (msg: string | null) => void;
 
   // Devices & E-Reader Sync
   devices: Device[];
@@ -232,6 +270,79 @@ export const useStore = create<AppStore>((set, get) => ({
   selectedSeries: null,
   taxonomyTree: [],
 
+  // Calibre Tag Tree Tri-State Filter State
+  tagTreeFilter: {},
+  tagTreeSearchQuery: '',
+  tagTreeSortBy: 'name',
+
+  cycleTagFilter: (category: string, value: string) => {
+    set((state) => {
+      const currentCat = state.tagTreeFilter[category] || {};
+      const currentState = currentCat[value]; // undefined | 'include' | 'exclude'
+      let nextState: FilterState | undefined;
+
+      if (!currentState) {
+        nextState = 'include';
+      } else if (currentState === 'include') {
+        nextState = 'exclude';
+      } else {
+        nextState = undefined;
+      }
+
+      const newCat = { ...currentCat };
+      if (nextState) {
+        newCat[value] = nextState;
+      } else {
+        delete newCat[value];
+      }
+
+      const newFilter = { ...state.tagTreeFilter };
+      if (Object.keys(newCat).length > 0) {
+        newFilter[category] = newCat;
+      } else {
+        delete newFilter[category];
+      }
+
+      return { tagTreeFilter: newFilter };
+    });
+  },
+
+  setTagFilter: (category: string, value: string, filterState: FilterState | null) => {
+    set((state) => {
+      const currentCat = { ...(state.tagTreeFilter[category] || {}) };
+      if (filterState) {
+        currentCat[value] = filterState;
+      } else {
+        delete currentCat[value];
+      }
+      const newFilter = { ...state.tagTreeFilter };
+      if (Object.keys(currentCat).length > 0) {
+        newFilter[category] = currentCat;
+      } else {
+        delete newFilter[category];
+      }
+      return { tagTreeFilter: newFilter };
+    });
+  },
+
+  clearTagTreeFilters: () => {
+    set({
+      tagTreeFilter: {},
+      selectedAuthor: null,
+      selectedFormat: null,
+      selectedSeries: null,
+      selectedTaxonomyPath: null,
+    });
+  },
+
+  setTagTreeSearchQuery: (tagTreeSearchQuery: string) => {
+    set({ tagTreeSearchQuery });
+  },
+
+  setTagTreeSortBy: (tagTreeSortBy: 'name' | 'count') => {
+    set({ tagTreeSortBy });
+  },
+
   // Custom Columns & Virtual Libraries & Series
   customColumns: [],
   seriesList: [],
@@ -260,14 +371,15 @@ export const useStore = create<AppStore>((set, get) => ({
   loadBooks: async () => {
     set({ isLoadingBooks: true });
     try {
-      const books = await api.getBooks({ limit: 500 });
+      const res = await api.getBooks({ limit: 500 });
+      const books = Array.isArray(res) ? res : [];
       set({ books, isLoadingBooks: false });
       if (!get().selectedBookId && books.length > 0) {
         await get().selectBook(books[0].id);
       }
     } catch (err) {
       console.error('Failed to load books:', err);
-      set({ isLoadingBooks: false });
+      set({ books: [], isLoadingBooks: false });
     }
   },
 
@@ -371,7 +483,24 @@ export const useStore = create<AppStore>((set, get) => ({
   isReaderAIOpen: false,
 
   openReader: (bookId: number, format?: string) => {
-    const fmt = format || 'EPUB';
+    let fmt = format;
+    if (!fmt) {
+      const book =
+        get().books.find((b) => b.id === bookId) ||
+        (get().selectedBookId === bookId ? get().selectedBook : null);
+      if (book && book.formats && book.formats.length > 0) {
+        const availableFormats = book.formats.map((f) => f.format.toUpperCase());
+        if (availableFormats.includes('EPUB')) fmt = 'EPUB';
+        else if (availableFormats.includes('PDF')) fmt = 'PDF';
+        else if (availableFormats.includes('CBZ')) fmt = 'CBZ';
+        else if (availableFormats.includes('CBR')) fmt = 'CBR';
+        else if (availableFormats.includes('MP3')) fmt = 'MP3';
+        else if (availableFormats.includes('M4B')) fmt = 'M4B';
+        else fmt = availableFormats[0];
+      } else {
+        fmt = 'EPUB';
+      }
+    }
     set({
       readerBookId: bookId,
       readerFormat: fmt,
@@ -500,11 +629,117 @@ export const useStore = create<AppStore>((set, get) => ({
   isIngestModalOpen: false,
   isSendToDeviceOpen: false,
   isDeviceSettingsOpen: false,
+  isEditMetadataOpen: false,
+  isBulkEditOpen: false,
   setRAGChatOpen: (open) => set({ isRAGChatOpen: open }),
   setSynthesisModalOpen: (open) => set({ isSynthesisModalOpen: open }),
   setIngestModalOpen: (open) => set({ isIngestModalOpen: open }),
   setSendToDeviceOpen: (open) => set({ isSendToDeviceOpen: open }),
   setDeviceSettingsOpen: (open) => set({ isDeviceSettingsOpen: open }),
+  setEditMetadataOpen: (open) => set({ isEditMetadataOpen: open }),
+  setBulkEditOpen: (open) => set({ isBulkEditOpen: open }),
+  isConversionModalOpen: false,
+  conversionTargetBookIds: [],
+  openConversionModal: (bookIds) => {
+    const ids =
+      bookIds && bookIds.length > 0
+        ? bookIds
+        : get().selectedBookIds.length > 0
+        ? get().selectedBookIds
+        : get().selectedBookId
+        ? [get().selectedBookId!]
+        : [];
+    set({ isConversionModalOpen: true, conversionTargetBookIds: ids });
+  },
+  closeConversionModal: () => set({ isConversionModalOpen: false, conversionTargetBookIds: [] }),
+  isManageLibrariesOpen: false,
+  setManageLibrariesOpen: (open) => set({ isManageLibrariesOpen: open }),
+  isPreferencesOpen: false,
+  setPreferencesOpen: (open) => set({ isPreferencesOpen: open }),
+  userPreferences: null,
+  loadPreferences: async () => {
+    try {
+      const pref = await api.getPreferences();
+      set({ userPreferences: pref });
+    } catch (err) {
+      console.error('Failed to load user preferences:', err);
+    }
+  },
+  savePreferences: async (pref: UserPreferences) => {
+    try {
+      const updated = await api.updatePreferences(pref);
+      set({ userPreferences: updated });
+      get().setToastMessage('Preferences saved successfully');
+    } catch (err: any) {
+      console.error('Failed to save preferences:', err);
+      get().setToastMessage(`Failed to save preferences: ${err.message}`);
+    }
+  },
+  deleteBook: async (bookId: number) => {
+    try {
+      await api.deleteBook(bookId);
+      set((state) => ({
+        selectedBookIds: state.selectedBookIds.filter((id) => id !== bookId),
+        books: state.books.filter((b) => b.id !== bookId),
+      }));
+      if (get().selectedBookId === bookId) {
+        const remaining = get().books.filter((b) => b.id !== bookId);
+        await get().selectBook(remaining.length > 0 ? remaining[0].id : null);
+      }
+      get().setToastMessage('Book successfully deleted from library and disk');
+      await get().loadLibraries();
+    } catch (err: any) {
+      console.error('Failed to delete book:', err);
+      get().setToastMessage(`Failed to delete book: ${err.message}`);
+    }
+  },
+  bulkDeleteBooks: async (bookIds: number[]) => {
+    try {
+      const res = await api.bulkDeleteBooks(bookIds);
+      const idSet = new Set(bookIds);
+      set((state) => ({
+        selectedBookIds: state.selectedBookIds.filter((id) => !idSet.has(id)),
+        books: state.books.filter((b) => !idSet.has(b.id)),
+      }));
+      if (get().selectedBookId && idSet.has(get().selectedBookId!)) {
+        const remaining = get().books.filter((b) => !idSet.has(b.id));
+        await get().selectBook(remaining.length > 0 ? remaining[0].id : null);
+      }
+      get().setToastMessage(`Deleted ${res.deleted_count} books from library and disk`);
+      await get().loadLibraries();
+    } catch (err: any) {
+      console.error('Failed to bulk delete books:', err);
+      get().setToastMessage(`Failed to delete books: ${err.message}`);
+    }
+  },
+
+  // Multi-Book Selection & Notifications (Feature 015)
+  selectedBookIds: [],
+  toggleSelectBookId: (id) => {
+    const current = get().selectedBookIds;
+    if (current.includes(id)) {
+      set({ selectedBookIds: current.filter((i) => i !== id) });
+    } else {
+      set({ selectedBookIds: [...current, id] });
+    }
+  },
+  selectAllBooks: () => {
+    set({ selectedBookIds: get().books.map((b) => b.id) });
+  },
+  clearSelectedBooks: () => {
+    set({ selectedBookIds: [] });
+  },
+  toastMessage: null,
+  setToastMessage: (msg) => {
+    set({ toastMessage: msg });
+    if (msg) {
+      setTimeout(() => {
+        if (get().toastMessage === msg) {
+          set({ toastMessage: null });
+        }
+      }, 3500);
+    }
+  },
 
   // Devices & E-Reader Sync
   devices: [],

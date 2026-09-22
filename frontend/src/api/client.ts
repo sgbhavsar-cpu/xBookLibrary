@@ -13,7 +13,10 @@ import type {
   BookCustomValues,
   Bookmark,
   BookmarkCreateRequest,
+  BookMetadataUpdateRequest,
   BookSummary,
+  BulkMetadataUpdateRequest,
+  BulkMetadataUpdateResult,
   ChatMessage,
   ChatSession,
   ComicManifest,
@@ -24,17 +27,24 @@ import type {
   DeviceCreateRequest,
   DeviceSyncLog,
   ExportToDirectoryRequest,
+  FormatAddResponse,
+  FormatDeleteResponse,
   IngestionJob,
   Library,
   MetadataProposal,
+  OnlineMetadataCandidate,
+  OnlineMetadataSearchRequest,
   ReadingProgress,
   ReadingProgressCreateRequest,
+  ScanDropFolderResponse,
   SendToDeviceRequest,
   SeriesInfo,
   SMTPSettings,
   SynthesisDocument,
   SynthesisJobStatus,
   TaxonomyNode,
+  TestAIConnectionResponse,
+  UserPreferences,
   VirtualLibrary,
 } from '../types';
 
@@ -75,17 +85,17 @@ export const api = {
     return request<Library>(`/api/libraries/${libraryId}/switch`, { method: 'POST' });
   },
 
-  async createLibrary(path: string, name: string): Promise<Library> {
-    return request<Library>('/api/libraries/create', {
+  async createLibrary(path: string, name: string, adopt_existing_calibre: boolean = false): Promise<Library> {
+    return request<Library>('/api/libraries', {
       method: 'POST',
-      body: JSON.stringify({ path, name, set_active: true }),
+      body: JSON.stringify({ path, name, adopt_existing_calibre, set_active: true }),
     });
   },
 
-  async adoptLibrary(path: string, name?: string): Promise<Library> {
-    return request<Library>('/api/libraries/adopt', {
+  async adoptLibrary(path: string, name: string): Promise<Library> {
+    return request<Library>('/api/libraries', {
       method: 'POST',
-      body: JSON.stringify({ path, name, set_active: true }),
+      body: JSON.stringify({ path, name, adopt_existing_calibre: true, set_active: true }),
     });
   },
 
@@ -102,19 +112,20 @@ export const api = {
     if (params?.query) sp.set('query', params.query);
     if (params?.library_id) sp.set('library_id', params.library_id);
     const qs = sp.toString() ? `?${sp.toString()}` : '';
-    return request<Book[]>(`/api/books${qs}`);
+    const res = await request<{ items?: Book[] } | Book[]>(`/api/books${qs}`);
+    return Array.isArray(res) ? res : (res?.items || []);
   },
 
   async getBook(bookId: number): Promise<Book> {
     return request<Book>(`/api/books/${bookId}`);
   },
 
-  async uploadBooks(files: File[]): Promise<IngestionJob[]> {
+  async uploadBooks(files: File[], conflictAction: 'merge' | 'create_new' | 'skip' = 'merge'): Promise<IngestionJob[]> {
     const data = new FormData();
     for (const f of files) {
       data.append('files', f);
     }
-    const res = await fetch('/api/books/upload', {
+    const res = await fetch(`/api/books/upload?conflict_action=${conflictAction}`, {
       method: 'POST',
       body: data,
     });
@@ -122,8 +133,19 @@ export const api = {
     return res.json();
   },
 
+  async checkBookDuplicate(file: File): Promise<{ duplicate: boolean; match?: any }> {
+    const data = new FormData();
+    data.append('file', file);
+    const res = await fetch('/api/books/check-duplicate', {
+      method: 'POST',
+      body: data,
+    });
+    if (!res.ok) throw new Error(`Duplicate check failed: ${res.statusText}`);
+    return res.json();
+  },
+
   getBookCoverUrl(bookId: number): string {
-    return `/covers/${bookId}.jpg`;
+    return `/api/books/${bookId}/cover`;
   },
 
   getBookDownloadUrl(bookId: number, format: string): string {
@@ -132,7 +154,12 @@ export const api = {
 
   // Taxonomies
   async getTaxonomyTree(): Promise<TaxonomyNode[]> {
-    return request<TaxonomyNode[]>('/api/taxonomies/tree');
+    try {
+      const res = await request<TaxonomyNode[]>('/api/taxonomies');
+      return Array.isArray(res) ? res : [];
+    } catch {
+      return [];
+    }
   },
 
   async assignTaxonomy(bookId: number, taxonomyPath: string): Promise<void> {
@@ -574,4 +601,106 @@ export const api = {
   getAudioTranscriptExportUrl(libraryId: string, bookId: number, format: string = 'vtt'): string {
     return `/api/libraries/${libraryId}/books/${bookId}/audio/transcripts/export?format=${encodeURIComponent(format)}`;
   },
+
+  // ---------------- Core Metadata & Library Operations (Feature 015) ----------------
+  async updateBookMetadata(bookId: number, data: BookMetadataUpdateRequest): Promise<Book> {
+    return request<Book>(`/api/books/${bookId}/metadata`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async uploadBookCover(bookId: number, file: File): Promise<Book> {
+    const formData = new FormData();
+    formData.append('cover', file);
+    const res = await fetch(`/api/books/${bookId}/cover`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to upload cover: ${res.statusText}`);
+    }
+    return res.json();
+  },
+
+  async queryOnlineMetadata(
+    bookId: number,
+    query?: OnlineMetadataSearchRequest
+  ): Promise<OnlineMetadataCandidate[]> {
+    return request<OnlineMetadataCandidate[]>(`/api/books/${bookId}/online-metadata/query`, {
+      method: 'POST',
+      body: JSON.stringify(query || {}),
+    });
+  },
+
+  async attachBookFormat(bookId: number, file: File): Promise<FormatAddResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`/api/books/${bookId}/formats`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to attach format: ${res.statusText}`);
+    }
+    return res.json();
+  },
+
+  async deleteBookFormat(bookId: number, formatName: string): Promise<FormatDeleteResponse> {
+    return request<FormatDeleteResponse>(`/api/books/${bookId}/formats/${encodeURIComponent(formatName)}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async bulkUpdateBooks(data: BulkMetadataUpdateRequest): Promise<BulkMetadataUpdateResult> {
+    return request<BulkMetadataUpdateResult>('/api/books/bulk-update', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteBook(bookId: number): Promise<{ book_id: number; title: string; deleted_from_disk: boolean; status: string }> {
+    return request(`/api/books/${bookId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async bulkDeleteBooks(bookIds: number[]): Promise<{ total_requested: number; deleted_count: number; failed_ids: number[]; errors: string[] }> {
+    return request('/api/books/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ book_ids: bookIds }),
+    });
+  },
+
+  // --- Preferences & Admin Console ---
+  async getPreferences(): Promise<UserPreferences> {
+    return request<UserPreferences>('/api/preferences');
+  },
+
+  async updatePreferences(preferences: UserPreferences): Promise<UserPreferences> {
+    return request<UserPreferences>('/api/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    });
+  },
+
+  async testAIConnection(req: {
+    provider: string;
+    gemini_api_key?: string;
+    openai_api_key?: string;
+    ollama_endpoint?: string;
+    ollama_model?: string;
+  }): Promise<TestAIConnectionResponse> {
+    return request<TestAIConnectionResponse>('/api/preferences/test-ai', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  },
+
+  async scanDropFolder(): Promise<ScanDropFolderResponse> {
+    return request<ScanDropFolderResponse>('/api/preferences/scan-drop-folder', {
+      method: 'POST',
+    });
+  },
 };
+

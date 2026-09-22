@@ -31,8 +31,82 @@ class IngestionService:
         self.db_path = library_root / "metadata.db"
         self.storage = StorageService(library_root)
 
-    async def ingest_file(self, source_file: Path) -> Book:
-        """Ingests a book file into the library with format merging and deduplication."""
+    async def find_duplicate(self, source_file: Path) -> Optional[dict]:
+        """Detects whether a source file matches an existing library book before ingestion."""
+        if not source_file.exists():
+            return None
+
+        file_hash = compute_sha256(source_file)
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT book_id FROM x_file_hashes WHERE sha256 = ?", (file_hash,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    b = await self._get_book_by_id(db, row["book_id"])
+                    return {
+                        "matched_by": "hash",
+                        "book_id": b.id,
+                        "title": b.title,
+                        "authors": b.authors,
+                        "existing_formats": [f.format for f in b.formats],
+                    }
+
+        try:
+            parser = ParserRegistry.get_parser(source_file)
+            payload = parser.parse(source_file)
+            primary_author = payload.authors[0] if payload.authors else "Unknown Author"
+            title = payload.title or source_file.stem
+            isbn = payload.identifiers.get("isbn")
+
+            async with aiosqlite.connect(self.db_path) as db:
+                db.row_factory = aiosqlite.Row
+                existing_book_id = None
+                matched_by = "title_author"
+
+                if isbn:
+                    async with db.execute(
+                        "SELECT book FROM identifiers WHERE type='isbn' AND val = ?", (isbn,)
+                    ) as cursor:
+                        row = await cursor.fetchone()
+                        if row:
+                            existing_book_id = row["book"]
+                            matched_by = "isbn"
+
+                if not existing_book_id:
+                    query = """
+                    SELECT b.id FROM books b
+                    JOIN books_authors_link bal ON b.id = bal.book
+                    JOIN authors a ON bal.author = a.id
+                    WHERE lower(b.title) = lower(?) AND lower(a.name) = lower(?)
+                    """
+                    async with db.execute(query, (title, primary_author)) as cursor:
+                        row = await cursor.fetchone()
+                        if row:
+                            existing_book_id = row["id"]
+
+                if existing_book_id:
+                    b = await self._get_book_by_id(db, existing_book_id)
+                    return {
+                        "matched_by": matched_by,
+                        "book_id": b.id,
+                        "title": b.title,
+                        "authors": b.authors,
+                        "existing_formats": [f.format for f in b.formats],
+                    }
+        except Exception:
+            pass
+
+        return None
+
+    async def ingest_file(
+        self,
+        source_file: Path,
+        conflict_action: str = "merge",
+    ) -> Book:
+        """Ingests a book file into the library with conflict resolution
+        ('merge', 'create_new', or 'skip')."""
         if not source_file.exists():
             raise FileNotFoundError(f"Source file not found: {source_file}")
 
@@ -86,10 +160,29 @@ class IngestionService:
                         existing_book_id = row["id"]
 
             if existing_book_id:
-                # Merge new format into existing book
-                return await self._merge_format(
-                    db, existing_book_id, source_file, format_name, file_hash, file_size, payload
-                )
+                if conflict_action == "skip":
+                    return await self._get_book_by_id(db, existing_book_id)
+                elif conflict_action == "create_new":
+                    return await self._create_book(
+                        db,
+                        source_file,
+                        format_name,
+                        file_hash,
+                        file_size,
+                        payload,
+                        primary_author,
+                        title,
+                    )
+                else:  # merge
+                    return await self._merge_format(
+                        db,
+                        existing_book_id,
+                        source_file,
+                        format_name,
+                        file_hash,
+                        file_size,
+                        payload,
+                    )
             else:
                 # Create brand new book
                 return await self._create_book(
@@ -177,6 +270,11 @@ class IngestionService:
         rel_dir = self.storage.get_book_relative_dir(
             primary_author, title, payload.publication_year
         )
+        base_rel_dir = rel_dir
+        counter = 1
+        while (self.library_root / rel_dir).exists():
+            rel_dir = f"{base_rel_dir} ({counter})"
+            counter += 1
         dest_dir = self.library_root / rel_dir
         dest_dir.mkdir(parents=True, exist_ok=True)
 

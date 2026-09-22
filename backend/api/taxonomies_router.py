@@ -68,6 +68,7 @@ async def classify_book(book_id: int):
 
 
 @router.get("/api/taxonomies", response_model=List[TaxonomyNode])
+@router.get("/api/taxonomies/tree", response_model=List[TaxonomyNode])
 async def list_taxonomies():
     """Retrieves the custom category tree as a nested hierarchy."""
     try:

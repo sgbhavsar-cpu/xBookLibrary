@@ -111,3 +111,15 @@ async def test_books_lifecycle(tmp_path: Path, isolated_env: Path):
         list_data = list_res.json()
         assert list_data["total"] == 1
         assert list_data["items"][0]["id"] == book_id
+
+        # 9. Book deletion via API
+        del_res = await client.delete(f"/api/books/{book_id}")
+        assert del_res.status_code == 200
+        del_data = del_res.json()
+        assert del_data["book_id"] == book_id
+        assert del_data["status"] == "deleted"
+
+        # Verify book no longer exists
+        not_found_res = await client.get(f"/api/books/{book_id}")
+        assert not_found_res.status_code == 404
+

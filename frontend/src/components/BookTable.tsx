@@ -1,12 +1,16 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Star } from 'lucide-react';
+import { Check, Loader2, Pencil, Star, X } from 'lucide-react';
+import { api } from '../api/client';
 import { useStore } from '../store/useStore';
+import type { Book } from '../types';
+import { filterBooks } from '../utils/filterBooks';
 
 export const BookTable: React.FC = () => {
   const {
     books,
     searchQuery,
+    tagTreeFilter,
     selectedTaxonomyPath,
     selectedAuthor,
     selectedFormat,
@@ -16,60 +20,41 @@ export const BookTable: React.FC = () => {
     selectedBookId,
     selectBook,
     openReader,
+    selectedBookIds,
+    toggleSelectBookId,
+    selectAllBooks,
+    clearSelectedBooks,
+    loadBooks,
+    setToastMessage,
   } = useStore();
 
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // In-place editing state
+  const [editingBookId, setEditingBookId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editAuthors, setEditAuthors] = useState('');
+  const [editSeries, setEditSeries] = useState('');
+  const [editSeriesIndex, setEditSeriesIndex] = useState<number>(1.0);
+  const [editRating, setEditRating] = useState<number>(0);
+  const [isSaving, setIsSaving] = useState(false);
+
   // Filter books matching search & filters
   const filteredBooks = useMemo(() => {
-    return books.filter((b) => {
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesTitle = b.title.toLowerCase().includes(q);
-        const matchesAuthor = b.authors.some((a) => a.toLowerCase().includes(q));
-        const matchesBisac = b.classification?.bisac_heading.toLowerCase().includes(q);
-        if (!matchesTitle && !matchesAuthor && !matchesBisac) return false;
-      }
-      if (selectedAuthor && !b.authors.includes(selectedAuthor)) return false;
-      if (selectedFormat && !b.formats.some((f) => f.format === selectedFormat)) return false;
-      if (selectedTaxonomyPath) {
-        const matchesHeading = b.classification?.bisac_heading
-          .toLowerCase()
-          .includes(selectedTaxonomyPath.toLowerCase());
-        if (!matchesHeading) return false;
-      }
-
-      // Series filter
-      if (selectedSeries && b.series !== selectedSeries) return false;
-
-      // Virtual library query filter
-      if (activeVirtualLibrary) {
-        const vl = virtualLibraries.find((v) => v.name === activeVirtualLibrary);
-        if (vl && vl.query.trim()) {
-          const q = vl.query.toLowerCase();
-          if (q.includes('#read_status:')) {
-            const expected = q.split('#read_status:')[1]?.split(' ')[0]?.replace(/["']/g, '');
-            const current = (b.custom_values?.read_status || '').toLowerCase();
-            if (expected && !current.includes(expected.toLowerCase())) return false;
-          }
-          if (q.includes('series:')) {
-            const expected = q.split('series:')[1]?.split(' ')[0]?.replace(/["']/g, '');
-            const current = (b.series || '').toLowerCase();
-            if (expected && !current.includes(expected.toLowerCase())) return false;
-          }
-          if (q.includes('tag:') || q.includes('tags:')) {
-            const match = q.match(/tags?:"?([^"\s]+)"?/);
-            const expected = match ? match[1].toLowerCase() : '';
-            if (expected && !b.tags.some((t) => t.toLowerCase().includes(expected))) return false;
-          }
-        }
-      }
-
-      return true;
+    return filterBooks(books, {
+      searchQuery,
+      tagTreeFilter,
+      activeVirtualLibrary,
+      virtualLibraries,
+      selectedAuthor,
+      selectedFormat,
+      selectedSeries,
+      selectedTaxonomyPath,
     });
   }, [
     books,
     searchQuery,
+    tagTreeFilter,
     selectedAuthor,
     selectedFormat,
     selectedTaxonomyPath,
@@ -81,38 +66,120 @@ export const BookTable: React.FC = () => {
   const rowVirtualizer = useVirtualizer({
     count: filteredBooks.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 40,
-    overscan: 10,
+    estimateSize: () => 48,
+    overscan: 5,
   });
+
+  const handleStartEdit = (b: Book, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditingBookId(b.id);
+    setEditTitle(b.title || '');
+    setEditAuthors(b.authors ? b.authors.join(', ') : '');
+    setEditSeries(b.series || '');
+    setEditSeriesIndex(b.series_index ?? 1.0);
+    setEditRating(b.custom_values?.rating ?? b.rating ?? 0);
+  };
+
+  const handleCancelEdit = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditingBookId(null);
+  };
+
+  const handleSaveEdit = async (bookId: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!editTitle.trim()) return;
+    setIsSaving(true);
+
+    try {
+      const parsedAuthors = editAuthors
+        .split(',')
+        .map((a) => a.trim())
+        .filter(Boolean);
+
+      await api.updateBookMetadata(bookId, {
+        title: editTitle.trim(),
+        authors: parsedAuthors.length > 0 ? parsedAuthors : undefined,
+        series_name: editSeries.trim() || undefined,
+        series_index: editSeries.trim() ? editSeriesIndex : undefined,
+        rating: editRating > 0 ? editRating : undefined,
+      });
+
+      setToastMessage('Row metadata updated in place');
+      await loadBooks();
+      setEditingBookId(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update metadata');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const allSelected =
+    filteredBooks.length > 0 &&
+    filteredBooks.every((b) => selectedBookIds.includes(b.id));
 
   return (
     <div
       ref={parentRef}
       style={{
         flex: 1,
-        height: 'calc(100vh - var(--header-height) - var(--status-bar-height) - 40px)',
+        height: 'calc(100vh - var(--header-height) - var(--status-bar-height))',
         overflowY: 'auto',
-        background: 'var(--bg-surface)',
+        position: 'relative',
       }}
     >
-      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+      <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: '13px',
+          textAlign: 'left',
+        }}
+      >
         <thead
           style={{
             position: 'sticky',
             top: 0,
-            background: 'var(--bg-surface-elevated)',
             zIndex: 10,
-            borderBottom: '2px solid var(--border-default)',
-            userSelect: 'none',
+            background: 'var(--bg-surface-elevated)',
+            borderBottom: '1px solid var(--border-default)',
+            color: 'var(--text-secondary)',
+            fontSize: '11px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
           }}
         >
-          <tr>
-            <th style={{ padding: '8px 16px', fontWeight: 600, width: '30%' }}>Title</th>
-            <th style={{ padding: '8px 16px', fontWeight: 600, width: '20%' }}>Authors</th>
+          <tr style={{ display: 'flex', alignItems: 'center' }}>
+            <th
+              style={{
+                width: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px 12px',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={() => {
+                  if (allSelected) {
+                    clearSelectedBooks();
+                  } else {
+                    selectAllBooks();
+                  }
+                }}
+                className="cursor-pointer rounded"
+                title="Select all books"
+              />
+            </th>
+            <th style={{ padding: '8px 16px', fontWeight: 600, width: '28%' }}>Title</th>
+            <th style={{ padding: '8px 16px', fontWeight: 600, width: '18%' }}>Authors</th>
             <th style={{ padding: '8px 16px', fontWeight: 600, width: '15%' }}>Series</th>
-            <th style={{ padding: '8px 16px', fontWeight: 600, width: '15%' }}>Classification</th>
-            <th style={{ padding: '8px 16px', fontWeight: 600, width: '10%' }}>Formats</th>
-            <th style={{ padding: '8px 16px', fontWeight: 600, width: '10%' }}>Rating</th>
+            <th style={{ padding: '8px 16px', fontWeight: 600, width: '14%' }}>Classification</th>
+            <th style={{ padding: '8px 16px', fontWeight: 600, width: '9%' }}>Formats</th>
+            <th style={{ padding: '8px 16px', fontWeight: 600, width: '9%' }}>Rating</th>
+            <th style={{ padding: '8px 16px', fontWeight: 600, width: '70px', textAlign: 'center' }}>Actions</th>
           </tr>
         </thead>
         <tbody
@@ -124,12 +191,27 @@ export const BookTable: React.FC = () => {
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const b = filteredBooks[virtualRow.index];
             const isSelected = b.id === selectedBookId;
+            const isChecked = selectedBookIds.includes(b.id);
+            const isRowEditing = editingBookId === b.id;
 
             return (
               <tr
                 key={b.id}
-                onClick={() => selectBook(b.id)}
-                onDoubleClick={() => openReader(b.id)}
+                onClick={(e) => {
+                  if (isRowEditing) return;
+                  if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                    toggleSelectBookId(b.id);
+                  }
+                  selectBook(b.id);
+                }}
+                onDoubleClick={() => {
+                  if (isRowEditing) return;
+                  const primary =
+                    b.formats.find((f) =>
+                      ['EPUB', 'PDF', 'CBZ', 'CBR', 'MP3', 'M4B'].includes(f.format.toUpperCase())
+                    ) || b.formats[0];
+                  openReader(b.id, primary?.format);
+                }}
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -139,16 +221,43 @@ export const BookTable: React.FC = () => {
                   transform: `translateY(${virtualRow.start}px)`,
                   display: 'flex',
                   alignItems: 'center',
-                  background: isSelected ? 'var(--accent-surface)' : undefined,
+                  background: isRowEditing
+                    ? 'var(--bg-card)'
+                    : isChecked
+                    ? 'rgba(99, 102, 241, 0.15)'
+                    : isSelected
+                    ? 'var(--accent-surface)'
+                    : undefined,
                   borderBottom: '1px solid var(--border-subtle)',
-                  cursor: 'pointer',
+                  boxShadow: isRowEditing ? '0 0 0 1px var(--accent-primary) inset' : undefined,
+                  cursor: isRowEditing ? 'default' : 'pointer',
                   transition: 'background var(--transition-fast)',
                 }}
               >
+                {/* Checkbox */}
                 <td
                   style={{
-                    padding: '0 16px',
-                    width: '30%',
+                    width: '40px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 12px',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleSelectBookId(b.id)}
+                    className="cursor-pointer rounded"
+                  />
+                </td>
+
+                {/* Title */}
+                <td
+                  style={{
+                    padding: '0 12px',
+                    width: '28%',
                     fontWeight: 500,
                     color: isSelected ? 'var(--accent-primary)' : 'var(--text-primary)',
                     whiteSpace: 'nowrap',
@@ -157,12 +266,30 @@ export const BookTable: React.FC = () => {
                   }}
                   title={b.title}
                 >
-                  {b.title}
+                  {isRowEditing ? (
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      autoFocus
+                      className="input-text"
+                      style={{ fontSize: '12px', padding: '3px 6px' }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveEdit(b.id);
+                        if (e.key === 'Escape') handleCancelEdit();
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    b.title
+                  )}
                 </td>
+
+                {/* Authors */}
                 <td
                   style={{
-                    padding: '0 16px',
-                    width: '20%',
+                    padding: '0 12px',
+                    width: '18%',
                     color: 'var(--text-secondary)',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
@@ -170,11 +297,29 @@ export const BookTable: React.FC = () => {
                   }}
                   title={b.authors.join(', ')}
                 >
-                  {b.authors.join(', ')}
+                  {isRowEditing ? (
+                    <input
+                      type="text"
+                      value={editAuthors}
+                      onChange={(e) => setEditAuthors(e.target.value)}
+                      className="input-text"
+                      style={{ fontSize: '11px', padding: '3px 6px' }}
+                      placeholder="Author(s)..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveEdit(b.id);
+                        if (e.key === 'Escape') handleCancelEdit();
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    b.authors.join(', ')
+                  )}
                 </td>
+
+                {/* Series */}
                 <td
                   style={{
-                    padding: '0 16px',
+                    padding: '0 12px',
                     width: '15%',
                     color: 'var(--accent-primary)',
                     whiteSpace: 'nowrap',
@@ -185,12 +330,42 @@ export const BookTable: React.FC = () => {
                   }}
                   title={b.series ? `${b.series} #${b.series_index || 1}` : ''}
                 >
-                  {b.series ? `${b.series} #${b.series_index || 1}` : '-'}
+                  {isRowEditing ? (
+                    <div style={{ display: 'flex', gap: '3px' }} onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        value={editSeries}
+                        onChange={(e) => setEditSeries(e.target.value)}
+                        className="input-text"
+                        style={{ fontSize: '11px', padding: '3px 4px', flex: 1 }}
+                        placeholder="Series..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEdit(b.id);
+                          if (e.key === 'Escape') handleCancelEdit();
+                        }}
+                      />
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={editSeriesIndex}
+                        onChange={(e) => setEditSeriesIndex(parseFloat(e.target.value) || 1.0)}
+                        className="input-text"
+                        style={{ fontSize: '11px', padding: '3px 2px', width: '36px', textAlign: 'center' }}
+                      />
+                    </div>
+                  ) : b.series ? (
+                    `${b.series} #${b.series_index || 1}`
+                  ) : (
+                    '-'
+                  )}
                 </td>
+
+                {/* Classification */}
                 <td
                   style={{
-                    padding: '0 16px',
-                    width: '15%',
+                    padding: '0 12px',
+                    width: '14%',
                     color: 'var(--text-muted)',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
@@ -200,12 +375,14 @@ export const BookTable: React.FC = () => {
                 >
                   {b.classification?.bisac_heading || '-'}
                 </td>
-                <td style={{ padding: '0 16px', width: '10%', display: 'flex', gap: '4px' }}>
+
+                {/* Formats */}
+                <td style={{ padding: '0 12px', width: '9%', display: 'flex', gap: '3px' }}>
                   {b.formats.map((f) => (
                     <span
                       key={f.format}
                       style={{
-                        fontSize: '10px',
+                        fontSize: '9.5px',
                         fontWeight: 700,
                         padding: '1px 4px',
                         borderRadius: '3px',
@@ -218,14 +395,79 @@ export const BookTable: React.FC = () => {
                     </span>
                   ))}
                 </td>
-                <td style={{ padding: '0 16px', width: '10%' }}>
-                  {b.rating && b.rating > 0 ? (
+
+                {/* Rating */}
+                <td style={{ padding: '0 12px', width: '9%' }} onClick={(e) => isRowEditing && e.stopPropagation()}>
+                  {isRowEditing ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setEditRating(editRating === star ? 0 : star)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '1px',
+                            color: star <= editRating ? '#eab308' : 'var(--text-muted)',
+                          }}
+                        >
+                          <Star size={13} fill={star <= editRating ? '#eab308' : 'none'} />
+                        </button>
+                      ))}
+                    </div>
+                  ) : b.rating && b.rating > 0 ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#eab308' }}>
                       <Star size={12} fill="#eab308" />
                       <span style={{ fontSize: '11px', fontWeight: 600 }}>{b.rating / 2}</span>
                     </div>
                   ) : (
                     '-'
+                  )}
+                </td>
+
+                {/* Actions */}
+                <td
+                  style={{
+                    padding: '0 8px',
+                    width: '70px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {isRowEditing ? (
+                    <>
+                      <button
+                        onClick={(e) => handleSaveEdit(b.id, e)}
+                        disabled={isSaving}
+                        className="btn-icon"
+                        style={{ width: '24px', height: '24px', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.4)' }}
+                        title="Save Changes"
+                      >
+                        {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Check size={13} />}
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="btn-icon"
+                        style={{ width: '24px', height: '24px', color: '#ef4444' }}
+                        title="Cancel"
+                      >
+                        <X size={13} />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={(e) => handleStartEdit(b, e)}
+                      className="btn-icon"
+                      style={{ width: '24px', height: '24px' }}
+                      title="Edit row in place"
+                    >
+                      <Pencil size={12} />
+                    </button>
                   )}
                 </td>
               </tr>

@@ -1,18 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Bookmark,
   BookOpen,
   Check,
   CheckCircle,
   Download,
+  Edit3,
   Headphones,
   Layers,
   Loader2,
   Mic,
+  Plus,
   RefreshCw,
   Repeat,
   Send,
   Sparkles,
+  Trash2,
   X,
 } from 'lucide-react';
 import { api } from '../api/client';
@@ -30,19 +33,23 @@ export const DetailInspector: React.FC = () => {
     loadBooks,
     loadSeriesList,
     setSendToDeviceOpen,
+    setEditMetadataOpen,
+    setToastMessage,
     playAudiobook,
     transcribeAudioChapter,
     isTranscribing,
     audioTranscripts,
     loadAudioTranscripts,
+    openConversionModal,
+    deleteBook,
   } = useStore();
 
   const [bookAudioMeta, setBookAudioMeta] = useState<AudiobookMetadata | null>(null);
   const [isEnriching, setIsEnriching] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
-  const [isConverting, setIsConverting] = useState(false);
   const [enrichSuccess, setEnrichSuccess] = useState<string | null>(null);
-  const [convertMessage, setConvertMessage] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Series & Custom Columns local state
   const [seriesName, setSeriesName] = useState('');
@@ -54,12 +61,47 @@ export const DetailInspector: React.FC = () => {
   const [isSavingCustom, setIsSavingCustom] = useState(false);
   const [customSuccess, setCustomSuccess] = useState(false);
 
+  // Format management (Feature 015)
+  const formatFileInputRef = useRef<HTMLInputElement>(null);
+  const [isAttachingFormat, setIsAttachingFormat] = useState(false);
+
+  const handleAttachFormat = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedBook) return;
+    setIsAttachingFormat(true);
+    try {
+      await api.attachBookFormat(selectedBook.id, file);
+      setToastMessage(`Attached format ${file.name.split('.').pop()?.toUpperCase()} successfully`);
+      await refreshSelectedBook();
+      await loadBooks();
+    } catch (err: any) {
+      alert(`Failed to attach format: ${err.message}`);
+    } finally {
+      setIsAttachingFormat(false);
+      if (formatFileInputRef.current) formatFileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteFormat = async (formatName: string) => {
+    if (!selectedBook) return;
+    if (!confirm(`Are you sure you want to delete the ${formatName} format for "${selectedBook.title}"?`)) {
+      return;
+    }
+    try {
+      await api.deleteBookFormat(selectedBook.id, formatName);
+      setToastMessage(`Deleted format ${formatName}`);
+      await refreshSelectedBook();
+      await loadBooks();
+    } catch (err: any) {
+      alert(`Failed to delete format: ${err.message}`);
+    }
+  };
+
   useEffect(() => {
     if (!selectedBook || !activeLibraryId) return;
     setSeriesName(selectedBook.series || '');
     setSeriesIndex(selectedBook.series_index || 1.0);
     setEnrichSuccess(null);
-    setConvertMessage(null);
     setSeriesSuccess(false);
     setCustomSuccess(false);
 
@@ -173,36 +215,14 @@ export const DetailInspector: React.FC = () => {
     }
   };
 
-  const handleConvert = async (targetFormat: string) => {
+  const handleDeleteBook = async () => {
     if (!selectedBook) return;
-    setIsConverting(true);
-    setConvertMessage(`Converting to ${targetFormat}...`);
+    setIsDeleting(true);
     try {
-      const job = await api.startConversion({
-        book_id: selectedBook.id,
-        target_format: targetFormat,
-      });
-      const poll = setInterval(async () => {
-        try {
-          const status = await api.getConversionJob(job.id);
-          if (status.status === 'completed') {
-            clearInterval(poll);
-            setIsConverting(false);
-            setConvertMessage(`Converted to ${targetFormat}!`);
-            await refreshSelectedBook();
-          } else if (status.status === 'failed') {
-            clearInterval(poll);
-            setIsConverting(false);
-            setConvertMessage(status.error_message || 'Conversion failed');
-          }
-        } catch {
-          clearInterval(poll);
-          setIsConverting(false);
-        }
-      }, 1200);
-    } catch (err: any) {
-      setIsConverting(false);
-      setConvertMessage(err.message || 'Conversion failed');
+      await deleteBook(selectedBook.id);
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -292,6 +312,17 @@ export const DetailInspector: React.FC = () => {
             </button>
           )}
 
+          {/* Edit Metadata Button (Feature 015) */}
+          <button
+            className="btn btn-secondary"
+            onClick={() => setEditMetadataOpen(true)}
+            style={{ width: '100%', padding: '8px 12px', borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)', fontWeight: 600 }}
+            title="Edit book metadata, tags, authors, series, and cover (Hotkey: E)"
+          >
+            <Edit3 size={15} />
+            <span>Edit Metadata [E]</span>
+          </button>
+
           {/* Listen Audiobook Action */}
           {audioFormat && (
             <button
@@ -367,6 +398,17 @@ export const DetailInspector: React.FC = () => {
               <span>{enrichSuccess}</span>
             </div>
           )}
+
+          {/* Delete Book Action */}
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowDeleteConfirm(true)}
+            style={{ width: '100%', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#ef4444' }}
+            title="Delete this book permanently from the library and disk"
+          >
+            <Trash2 size={14} />
+            <span>Delete Book</span>
+          </button>
         </div>
       </div>
 
@@ -667,85 +709,110 @@ export const DetailInspector: React.FC = () => {
         </div>
       )}
 
-      {/* Formats Section */}
+      {/* Formats Section (Feature 015 Multi-Format Management) */}
       <div>
-        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-          Available Formats
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            Available Formats ({selectedBook.formats.length})
+          </span>
+          <button
+            className="btn btn-secondary"
+            onClick={() => formatFileInputRef.current?.click()}
+            disabled={isAttachingFormat}
+            style={{ fontSize: '11px', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: '3px', color: 'var(--accent-primary)', borderColor: 'var(--border-subtle)' }}
+            title="Attach an additional format file (EPUB, PDF, MOBI, CBZ, etc.)"
+          >
+            {isAttachingFormat ? <Loader2 size={11} className="animate-spin" /> : <Plus size={12} />}
+            <span>{isAttachingFormat ? 'Adding...' : 'Add Format'}</span>
+          </button>
+          <input
+            ref={formatFileInputRef}
+            type="file"
+            accept=".epub,.pdf,.mobi,.azw3,.cbz,.cbr,.docx,.mp3,.m4b"
+            onChange={handleAttachFormat}
+            style={{ display: 'none' }}
+          />
         </div>
+
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           {selectedBook.formats.map((fmt) => {
             const canRead = ['EPUB', 'PDF', 'CBZ', 'CBR'].includes(fmt.format.toUpperCase());
             const isAudioFmt = ['M4B', 'MP3'].includes(fmt.format.toUpperCase());
             return (
-              <div key={fmt.format} style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+              <div
+                key={fmt.format}
+                style={{
+                  display: 'flex',
+                  gap: '2px',
+                  alignItems: 'center',
+                  background: 'var(--bg-surface-elevated)',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-subtle)',
+                  padding: '2px',
+                }}
+              >
                 {canRead && (
                   <button
                     className="btn btn-secondary"
                     onClick={() => openReader(selectedBook.id, fmt.format)}
-                    style={{ fontSize: '11.5px', padding: '4px 8px', color: 'var(--accent-primary)' }}
+                    style={{ fontSize: '11.5px', padding: '3px 6px', color: 'var(--accent-primary)', border: 'none', background: 'transparent' }}
                     title={`Read ${fmt.format}`}
                   >
                     <BookOpen size={12} />
-                    <span>Read {fmt.format}</span>
+                    <span>{fmt.format}</span>
                   </button>
                 )}
                 {isAudioFmt && (
                   <button
                     className="btn btn-secondary"
                     onClick={() => playAudiobook(selectedBook, fmt.format)}
-                    style={{ fontSize: '11.5px', padding: '4px 8px', color: 'var(--accent-primary)' }}
+                    style={{ fontSize: '11.5px', padding: '3px 6px', color: 'var(--accent-primary)', border: 'none', background: 'transparent' }}
                     title={`Listen ${fmt.format}`}
                   >
                     <Headphones size={12} />
-                    <span>Listen {fmt.format}</span>
+                    <span>{fmt.format}</span>
                   </button>
                 )}
                 <a
                   href={api.getBookDownloadUrl(selectedBook.id, fmt.format)}
                   download
                   className="btn btn-secondary"
-                  style={{ fontSize: '11.5px', padding: '4px 8px' }}
+                  style={{ fontSize: '11px', padding: '3px 5px', border: 'none', background: 'transparent' }}
                   title="Download File"
                 >
-                  <Download size={12} />
+                  <Download size={11} />
                   <span>({Math.round(fmt.uncompressed_size / 1024)} KB)</span>
                 </a>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteFormat(fmt.format)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '3px 5px', display: 'flex', alignItems: 'center' }}
+                  title={`Delete ${fmt.format} format`}
+                >
+                  <Trash2 size={11} />
+                </button>
               </div>
             );
           })}
         </div>
 
         {/* Format Conversion Controls */}
-        <div style={{ marginTop: '8px', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {!selectedBook.formats.some((f) => f.format.toUpperCase() === 'EPUB') && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => handleConvert('EPUB')}
-              disabled={isConverting}
-              style={{ fontSize: '11px', padding: '3px 8px' }}
-              title="Convert to reflowable EPUB"
-            >
-              <Repeat size={11} className={isConverting ? 'animate-spin' : ''} />
-              <span>Convert to EPUB</span>
-            </button>
-          )}
-          {!selectedBook.formats.some((f) => f.format.toUpperCase() === 'PDF') && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => handleConvert('PDF')}
-              disabled={isConverting}
-              style={{ fontSize: '11px', padding: '3px 8px' }}
-              title="Convert to readable PDF"
-            >
-              <Repeat size={11} className={isConverting ? 'animate-spin' : ''} />
-              <span>Convert to PDF</span>
-            </button>
-          )}
-          {convertMessage && (
-            <div style={{ fontSize: '11px', color: 'var(--accent-primary)', width: '100%', marginTop: '2px' }}>
-              {convertMessage}
-            </div>
-          )}
+        <div style={{ marginTop: '8px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => openConversionModal([selectedBook.id])}
+            style={{
+              width: '100%',
+              fontSize: '11.5px',
+              padding: '6px 10px',
+              borderColor: 'rgba(99, 102, 241, 0.4)',
+              color: 'var(--accent-primary)',
+            }}
+            title="Convert book into EPUB, PDF, MOBI, AZW3, TXT, or DOCX"
+          >
+            <Repeat size={12} />
+            <span>Convert Book Formats</span>
+          </button>
         </div>
       </div>
 
@@ -805,6 +872,106 @@ export const DetailInspector: React.FC = () => {
             style={{ fontSize: '12.5px', lineHeight: 1.6, color: 'var(--text-secondary)' }}
             dangerouslySetInnerHTML={{ __html: selectedBook.comments }}
           />
+        </div>
+      )}
+
+      {/* Delete Single Book Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 110,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            padding: '1.5rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isDeleting) setShowDeleteConfirm(false);
+          }}
+        >
+          <div
+            className="glass-panel"
+            style={{
+              width: '100%',
+              maxWidth: '440px',
+              backgroundColor: 'var(--bg-modal, #18181b)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              borderRadius: 'var(--radius-lg, 16px)',
+              boxShadow: 'var(--shadow-xl)',
+              padding: '1.5rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.25rem',
+              animation: 'fadeIn 0.2s ease-out',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Delete Book?
+                </h3>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  Calibre library permanent removal
+                </span>
+              </div>
+            </div>
+
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              Are you sure you want to permanently delete <strong>"{selectedBook.title}"</strong>?
+              This will remove the record from <code>metadata.db</code>, drop chunk vector embeddings, and delete all associated files from disk.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleDeleteBook}
+                disabled={isDeleting}
+                style={{
+                  backgroundColor: '#ef4444',
+                  borderColor: '#ef4444',
+                  color: '#fff',
+                }}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Delete Permanently</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </aside>

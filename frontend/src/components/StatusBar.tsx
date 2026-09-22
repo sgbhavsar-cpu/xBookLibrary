@@ -62,6 +62,33 @@ export const StatusBar: React.FC = () => {
         )}
       </div>
 
+      {/* Center Shortcuts Hint */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          color: 'var(--text-muted)',
+          fontSize: '11px',
+        }}
+      >
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+          <kbd style={{ padding: '1px 4px', background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: '3px', fontSize: '10px' }}>E</kbd> Edit
+        </span>
+        &bull;
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+          <kbd style={{ padding: '1px 4px', background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: '3px', fontSize: '10px' }}>C</kbd> Convert
+        </span>
+        &bull;
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+          <kbd style={{ padding: '1px 4px', background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: '3px', fontSize: '10px' }}>V</kbd> Read
+        </span>
+        &bull;
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+          <kbd style={{ padding: '1px 4px', background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: '3px', fontSize: '10px' }}>Esc</kbd> Deselect
+        </span>
+      </div>
+
       {/* Right Ready Status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-muted)' }}>
         <CheckCircle size={13} color="#10b981" />

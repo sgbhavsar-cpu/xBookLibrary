@@ -427,6 +427,22 @@ class DeviceService:
 
         shutil.copy2(source_path, dest_path)
 
+        # Calibre Save-to-Disk parity: include cover.jpg and metadata.opf if present
+        source_dir = source_path.parent
+        cover_src = source_dir / "cover.jpg"
+        if cover_src.exists():
+            try:
+                shutil.copy2(cover_src, dest_dir / "cover.jpg")
+            except Exception:
+                pass
+        opf_src = source_dir / "metadata.opf"
+        if opf_src.exists():
+            try:
+                shutil.copy2(opf_src, dest_dir / "metadata.opf")
+            except Exception:
+                pass
+
+
         await self.record_sync_log(
             lib_dir,
             book_id=book_id,

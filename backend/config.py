@@ -13,9 +13,25 @@ from backend.domain.entities import Library
 class UserPreferences(BaseModel):
     theme: str = "dark"
     default_page_size: int = 50
+    default_format: str = "EPUB"
+    view_mode: str = "grid"
+
+    # AI & LLM Services Configuration
+    active_ai_provider: str = "gemini"  # "gemini" | "openai" | "ollama"
     gemini_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
     ollama_endpoint: str = "http://localhost:11434"
+    ollama_model: str = "llama3"
+    embedding_model: str = "all-MiniLM-L6-v2"
+
+    # Drop Folder / Auto-Import Configuration
+    auto_import_folder: Optional[str] = None
+    auto_import_enabled: bool = False
+    auto_import_action: str = "merge"  # "skip" | "create_new" | "merge"
+
+    # Sharing & Network
+    opds_enabled: bool = True
+    opds_port: int = 8000
     smtp_settings: SMTPSettings = Field(default_factory=SMTPSettings)
 
 

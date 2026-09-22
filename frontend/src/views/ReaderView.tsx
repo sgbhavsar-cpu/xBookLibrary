@@ -51,6 +51,18 @@ export const ReaderView: React.FC = () => {
       .catch((err) => console.error('Failed to load reader book:', err));
   }, [readerBookId]);
 
+  const fmt = (readerFormat || 'EPUB').toUpperCase();
+  const isAudio = fmt === 'M4B' || fmt === 'MP3';
+  const isEpub = fmt === 'EPUB';
+  const isPdf = fmt === 'PDF';
+  const isComic = fmt === 'CBZ' || fmt === 'CBR';
+
+  useEffect(() => {
+    if (isAudio && book && (!activeAudiobook || activeAudiobook.bookId !== book.id)) {
+      playAudiobook(book, fmt);
+    }
+  }, [isAudio, book, fmt, activeAudiobook, playAudiobook]);
+
   if (!readerBookId || !book) {
     return (
       <div
@@ -67,18 +79,6 @@ export const ReaderView: React.FC = () => {
       </div>
     );
   }
-
-  const fmt = (readerFormat || 'EPUB').toUpperCase();
-  const isAudio = fmt === 'M4B' || fmt === 'MP3';
-  const isEpub = fmt === 'EPUB';
-  const isPdf = fmt === 'PDF';
-  const isComic = fmt === 'CBZ' || fmt === 'CBR';
-
-  useEffect(() => {
-    if (isAudio && book && (!activeAudiobook || activeAudiobook.bookId !== book.id)) {
-      playAudiobook(book, fmt);
-    }
-  }, [isAudio, book, fmt, activeAudiobook, playAudiobook]);
 
   if (isAudio) {
     return <AudiobookPlayer />;

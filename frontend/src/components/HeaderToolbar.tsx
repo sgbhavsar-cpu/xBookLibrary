@@ -2,11 +2,14 @@ import React, { useState } from 'react';
 import {
   BookOpen,
   FolderOpen,
+  FolderPlus,
   Grid,
   List,
   MessageSquare,
   Moon,
+  Repeat,
   Search,
+  Settings,
   Smartphone,
   Sparkles,
   Sun,
@@ -33,6 +36,10 @@ export const HeaderToolbar: React.FC = () => {
     setSynthesisModalOpen,
     setIngestModalOpen,
     setDeviceSettingsOpen,
+    setManageLibrariesOpen,
+    setPreferencesOpen,
+    openConversionModal,
+    selectedBookIds,
   } = useStore();
 
   return (
@@ -98,6 +105,14 @@ export const HeaderToolbar: React.FC = () => {
               </option>
             ))}
           </select>
+          <button
+            className="btn-icon"
+            onClick={() => setManageLibrariesOpen(true)}
+            title="Manage Calibre Libraries (Switch, Adopt, or Create)"
+            style={{ width: '28px', height: '28px', color: 'var(--text-muted)' }}
+          >
+            <FolderPlus size={15} />
+          </button>
         </div>
       </div>
 
@@ -189,6 +204,17 @@ export const HeaderToolbar: React.FC = () => {
           <span>Import</span>
         </button>
 
+        {/* Format Conversion Button */}
+        <button
+          className="btn btn-secondary"
+          onClick={() => openConversionModal()}
+          title="Convert books into EPUB, PDF, MOBI, AZW3, TXT, or DOCX"
+          style={{ borderColor: 'rgba(99, 102, 241, 0.4)' }}
+        >
+          <Repeat size={15} color="var(--accent-primary)" />
+          <span>Convert{selectedBookIds.length > 0 ? ` (${selectedBookIds.length})` : ''}</span>
+        </button>
+
         {/* OPDS Wireless Feed */}
         <button
           className="btn btn-secondary"
@@ -239,6 +265,15 @@ export const HeaderToolbar: React.FC = () => {
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
         >
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+
+        {/* Preferences / Admin Console */}
+        <button
+          className="btn-icon"
+          onClick={() => setPreferencesOpen(true)}
+          title="Preferences & Admin Console (AI, Drop Folder, OPDS)"
+        >
+          <Settings size={16} />
         </button>
       </div>
 

@@ -1,0 +1,325 @@
+openapi: 3.0.3
+info:
+  title: xBookLibrary Core Metadata & Multi-Format Ingestion API
+  version: 1.0.0
+  description: Endpoints for manual single-book editing, online metadata search, multi-format attachments, and bulk metadata updates.
+paths:
+  /api/books/{book_id}/metadata:
+    put:
+      summary: Update single book metadata
+      tags:
+        - Metadata Editor
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookMetadataUpdateRequest'
+      responses:
+        '200':
+          description: Successfully updated book metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          description: Book not found
+
+  /api/books/{book_id}/cover:
+    post:
+      summary: Upload or replace cover art for a book
+      tags:
+        - Metadata Editor
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                cover_url:
+                  type: string
+                  description: Optional remote image URL to download
+      responses:
+        '200':
+          description: Cover art updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  cover_url:
+                    type: string
+
+  /api/books/{book_id}/online-metadata/query:
+    post:
+      summary: Search online providers for metadata candidates
+      tags:
+        - Online Metadata
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                author:
+                  type: string
+                isbn:
+                  type: string
+      responses:
+        '200':
+          description: List of ranked online metadata candidates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OnlineMetadataCandidate'
+
+  /api/books/{book_id}/formats:
+    post:
+      summary: Attach an additional format file to an existing book
+      tags:
+        - Formats
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Format attached successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+
+  /api/books/{book_id}/formats/{format}:
+    delete:
+      summary: Delete a specific format file from a book
+      tags:
+        - Formats
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: format
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Format deleted successfully
+        '404':
+          description: Format or book not found
+
+  /api/books/bulk-update:
+    post:
+      summary: Bulk update metadata for multiple selected books
+      tags:
+        - Metadata Editor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkMetadataUpdateRequest'
+      responses:
+        '200':
+          description: Successfully updated multiple books
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated_count:
+                    type: integer
+                  book_ids:
+                    type: array
+                    items:
+                      type: integer
+
+components:
+  schemas:
+    BookMetadataUpdateRequest:
+      type: object
+      required:
+        - title
+        - authors
+      properties:
+        title:
+          type: string
+        title_sort:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        author_sort:
+          type: string
+        publisher:
+          type: string
+        pubdate:
+          type: string
+          format: date-time
+        rating:
+          type: integer
+          minimum: 0
+          maximum: 10
+        series:
+          type: string
+        series_index:
+          type: number
+        tags:
+          type: array
+          items:
+            type: string
+        identifiers:
+          type: object
+          additionalProperties:
+            type: string
+        comments:
+          type: string
+        custom_values:
+          type: object
+
+    OnlineMetadataCandidate:
+      type: object
+      properties:
+        provider:
+          type: string
+        confidence:
+          type: number
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        publisher:
+          type: string
+        pubdate:
+          type: string
+        description:
+          type: string
+        isbn:
+          type: string
+        identifiers:
+          type: object
+          additionalProperties:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        cover_url:
+          type: string
+        thumbnail_url:
+          type: string
+
+    BulkMetadataUpdateRequest:
+      type: object
+      required:
+        - book_ids
+      properties:
+        book_ids:
+          type: array
+          items:
+            type: integer
+        add_tags:
+          type: array
+          items:
+            type: string
+        remove_tags:
+          type: array
+          items:
+            type: string
+        set_author:
+          type: string
+        set_publisher:
+          type: string
+        set_rating:
+          type: integer
+          minimum: 0
+          maximum: 10
+        set_series:
+          type: string
+        auto_number_series:
+          type: boolean
+        starting_series_index:
+          type: number
+          default: 1.0
+        series_index_increment:
+          type: number
+          default: 1.0
+        custom_values:
+          type: object
+
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        series:
+          type: string
+        series_index:
+          type: number
+        rating:
+          type: integer
+        formats:
+          type: array
+          items:
+            type: object
+            properties:
+              format:
+                type: string
+              size:
+                type: integer
+              path:
+                type: string

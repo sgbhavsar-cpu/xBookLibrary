@@ -3,11 +3,13 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { SearchX } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { BookCard } from './BookCard';
+import { filterBooks } from '../utils/filterBooks';
 
 export const BookGrid: React.FC = () => {
   const {
     books,
     searchQuery,
+    tagTreeFilter,
     selectedTaxonomyPath,
     selectedAuthor,
     selectedFormat,
@@ -18,6 +20,8 @@ export const BookGrid: React.FC = () => {
     isLoadingBooks,
     activeVirtualLibrary,
     virtualLibraries,
+    selectedBookIds,
+    toggleSelectBookId,
   } = useStore();
 
   const parentRef = useRef<HTMLDivElement>(null);
@@ -37,70 +41,20 @@ export const BookGrid: React.FC = () => {
 
   // Filter books based on active criteria
   const filteredBooks = useMemo(() => {
-    return books.filter((b) => {
-      // 1. Search Query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesTitle = b.title.toLowerCase().includes(q);
-        const matchesAuthor = b.authors.some((a) => a.toLowerCase().includes(q));
-        const matchesTag = b.tags.some((t) => t.toLowerCase().includes(q));
-        const matchesBisac = b.classification?.bisac_heading.toLowerCase().includes(q);
-        if (!matchesTitle && !matchesAuthor && !matchesTag && !matchesBisac) {
-          return false;
-        }
-      }
-
-      // 2. Author Filter
-      if (selectedAuthor && !b.authors.includes(selectedAuthor)) {
-        return false;
-      }
-
-      // 3. Format Filter
-      if (selectedFormat && !b.formats.some((f) => f.format === selectedFormat)) {
-        return false;
-      }
-
-      // 4. Taxonomy Path Filter
-      if (selectedTaxonomyPath) {
-        const matchesHeading = b.classification?.bisac_heading
-          .toLowerCase()
-          .includes(selectedTaxonomyPath.toLowerCase());
-        if (!matchesHeading) return false;
-      }
-
-      // 5. Series Filter
-      if (selectedSeries && b.series !== selectedSeries) {
-        return false;
-      }
-
-      // 6. Virtual Library Filter
-      if (activeVirtualLibrary) {
-        const vl = virtualLibraries.find((v) => v.name === activeVirtualLibrary);
-        if (vl && vl.query.trim()) {
-          const q = vl.query.toLowerCase();
-          if (q.includes('#read_status:')) {
-            const expected = q.split('#read_status:')[1]?.split(' ')[0]?.replace(/["']/g, '');
-            const current = (b.custom_values?.read_status || '').toLowerCase();
-            if (expected && !current.includes(expected.toLowerCase())) return false;
-          }
-          if (q.includes('series:')) {
-            const expected = q.split('series:')[1]?.split(' ')[0]?.replace(/["']/g, '');
-            const current = (b.series || '').toLowerCase();
-            if (expected && !current.includes(expected.toLowerCase())) return false;
-          }
-          if (q.includes('tag:') || q.includes('tags:')) {
-            const match = q.match(/tags?:"?([^"\s]+)"?/);
-            const expected = match ? match[1].toLowerCase() : '';
-            if (expected && !b.tags.some((t) => t.toLowerCase().includes(expected))) return false;
-          }
-        }
-      }
-
-      return true;
+    return filterBooks(books, {
+      searchQuery,
+      tagTreeFilter,
+      activeVirtualLibrary,
+      virtualLibraries,
+      selectedAuthor,
+      selectedFormat,
+      selectedSeries,
+      selectedTaxonomyPath,
     });
   }, [
     books,
     searchQuery,
+    tagTreeFilter,
     selectedAuthor,
     selectedFormat,
     selectedTaxonomyPath,
@@ -117,7 +71,7 @@ export const BookGrid: React.FC = () => {
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 320, // estimated card row height
+    estimateSize: () => 390, // estimated card row height
     overscan: 3,
   });
 
@@ -207,8 +161,16 @@ export const BookGrid: React.FC = () => {
                   key={b.id}
                   book={b}
                   isSelected={b.id === selectedBookId}
+                  isChecked={selectedBookIds.includes(b.id)}
+                  onToggleCheck={() => toggleSelectBookId(b.id)}
                   onSelect={() => selectBook(b.id)}
-                  onDoubleClick={() => openReader(b.id)}
+                  onDoubleClick={() => {
+                    const primary =
+                      b.formats.find((f) =>
+                        ['EPUB', 'PDF', 'CBZ', 'CBR', 'MP3', 'M4B'].includes(f.format.toUpperCase())
+                      ) || b.formats[0];
+                    openReader(b.id, primary?.format);
+                  }}
                 />
               ))}
             </div>

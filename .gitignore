@@ -24,3 +24,11 @@ scratch/
 # Calibre test outputs
 *.epub.tmp
 sample_library/
+
+# Frontend & Distribution
+node_modules/
+frontend/node_modules/
+frontend/dist/
+installer_dist/
+*.png
+

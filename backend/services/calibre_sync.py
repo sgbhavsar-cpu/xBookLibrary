@@ -183,6 +183,78 @@ class CalibreSyncService:
                     for t_row in await tag_cursor.fetchall():
                         tags.append(t_row["name"])
 
+                # Fetch Publisher
+                publisher = None
+                try:
+                    pub_sql = """
+                    SELECT p.name FROM publishers p
+                    JOIN books_publishers_link bpl ON p.id = bpl.publisher
+                    WHERE bpl.book = ?
+                    """
+                    async with db.execute(pub_sql, (book_id,)) as pub_cursor:
+                        p_row = await pub_cursor.fetchone()
+                        if p_row:
+                            publisher = p_row["name"]
+                except Exception:
+                    pass
+
+                # Fetch Series & Series Index
+                series_name = None
+                series_index = 1.0
+                try:
+                    series_sql = """
+                    SELECT s.name, b.series_index FROM series s
+                    JOIN books_series_link bsl ON s.id = bsl.series
+                    JOIN books b ON b.id = bsl.book
+                    WHERE bsl.book = ?
+                    """
+                    async with db.execute(series_sql, (book_id,)) as series_cursor:
+                        s_row = await series_cursor.fetchone()
+                        if s_row:
+                            series_name = s_row["name"]
+                            if s_row["series_index"] is not None:
+                                series_index = float(s_row["series_index"])
+                except Exception:
+                    pass
+
+                # Fetch Rating
+                rating = None
+                try:
+                    rating_sql = """
+                    SELECT r.rating FROM ratings r
+                    JOIN books_ratings_link brl ON r.id = brl.rating
+                    WHERE brl.book = ?
+                    """
+                    async with db.execute(rating_sql, (book_id,)) as rate_cursor:
+                        r_row = await rate_cursor.fetchone()
+                        if r_row:
+                            rating = r_row["rating"]
+                except Exception:
+                    pass
+
+                # Fetch Description / Comments
+                description = None
+                try:
+                    async with db.execute(
+                        "SELECT text FROM comments WHERE book = ?", (book_id,)
+                    ) as desc_cur:
+                        c_row = await desc_cur.fetchone()
+                        if c_row:
+                            description = c_row["text"]
+                except Exception:
+                    pass
+
+                # Fetch Identifiers
+                identifiers = {}
+                try:
+                    async with db.execute(
+                        "SELECT type, val FROM identifiers WHERE book = ?", (book_id,)
+                    ) as id_cur:
+                        for ir in await id_cur.fetchall():
+                            identifiers[ir["type"]] = ir["val"]
+                except Exception:
+                    pass
+
                 # Extract publication year
                 pub_year = None
                 if b["pubdate"]:
@@ -191,18 +263,28 @@ class CalibreSyncService:
                     except (ValueError, TypeError):
                         pass
 
+                custom_values = {}
+                if rating is not None:
+                    custom_values["rating"] = rating
+
                 books.append(
                     Book(
                         id=book_id,
                         title=b["title"],
                         sort_title=b["sort"],
                         authors=authors,
+                        publisher=publisher,
                         publication_year=pub_year,
                         isbn=b["isbn"],
                         path=b["path"],
                         has_cover=bool(b["has_cover"]),
                         formats=formats,
                         tags=tags,
+                        series_name=series_name,
+                        series_index=series_index,
+                        description=description,
+                        identifiers=identifiers,
+                        custom_values=custom_values,
                     )
                 )
 

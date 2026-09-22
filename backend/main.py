@@ -19,6 +19,7 @@ from backend.api.kobo_sync_router import router as kobo_sync_router
 from backend.api.kosync_router import router as kosync_router
 from backend.api.libraries_router import router as libraries_router
 from backend.api.opds_router import router as opds_router
+from backend.api.preferences_router import router as preferences_router
 from backend.api.proposals_router import router as proposals_router
 from backend.api.rag_router import router as rag_router
 from backend.api.reader_router import router as reader_router
@@ -66,9 +67,18 @@ app.include_router(devices_router)
 app.include_router(kobo_sync_router)
 app.include_router(kosync_router)
 app.include_router(audiobooks_router)
+app.include_router(preferences_router)
 
 
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Health check endpoint for system readiness."""
     return {"status": "ok", "service": "xBookLibrary"}
+
+
+# Mount production frontend build if available
+frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
+

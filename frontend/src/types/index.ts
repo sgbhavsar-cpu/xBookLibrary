@@ -32,18 +32,39 @@ export interface Book {
   title: string;
   authors: string[];
   sort?: string;
+  sort_title?: string;
+  author_sort?: string;
+  publisher?: string;
   pubdate?: string;
+  publication_year?: number;
   series?: string;
+  series_name?: string;
   series_index?: number;
   rating?: number;
   tags: string[];
+  isbn?: string;
   identifiers: Record<string, string>;
   comments?: string;
+  description?: string;
   has_cover?: boolean;
   formats: BookFormat[];
   classification?: BookClassification;
   is_indexed?: boolean;
   custom_values?: Record<string, any>;
+}
+
+export type FilterState = 'include' | 'exclude';
+
+// Category Key -> Item Key -> 'include' | 'exclude'
+export type TagTreeFilter = Record<string, Record<string, FilterState>>;
+
+export interface TagTreeNode {
+  id: string;
+  name: string;
+  fullPath: string;
+  count: number;
+  category: string;
+  children?: TagTreeNode[];
 }
 
 export interface TaxonomyNode {
@@ -421,4 +442,118 @@ export interface AudioPlaybackState {
   volume: number;
   currentChapterIndex: number;
 }
+
+export interface BookMetadataUpdateRequest {
+  title?: string;
+  sort_title?: string;
+  authors?: string[];
+  author_sort?: string;
+  publisher?: string;
+  pubdate?: string;
+  rating?: number;
+  tags?: string[];
+  series_name?: string;
+  series_index?: number;
+  isbn?: string;
+  identifiers?: Record<string, string>;
+  comments?: string;
+  custom_values?: Record<string, any>;
+}
+
+export interface OnlineMetadataCandidate {
+  source: string; // "google_books" | "openlibrary"
+  title: string;
+  authors: string[];
+  publisher?: string;
+  published_date?: string;
+  description?: string;
+  isbn?: string;
+  identifiers: Record<string, string>;
+  cover_url?: string;
+  rating?: number;
+  tags: string[];
+  confidence_score: number;
+}
+
+export interface OnlineMetadataSearchRequest {
+  title?: string;
+  author?: string;
+  isbn?: string;
+}
+
+export interface BulkMetadataUpdateRequest {
+  book_ids: number[];
+  add_tags?: string[];
+  remove_tags?: string[];
+  set_author?: string;
+  set_publisher?: string;
+  set_rating?: number;
+  set_series?: string;
+  auto_increment_series?: boolean;
+  series_start_index?: number;
+}
+
+export interface BulkMetadataUpdateResult {
+  total_requested: number;
+  updated_count: number;
+  failed_ids: number[];
+  errors: string[];
+}
+
+export interface FormatAddResponse {
+  book_id: number;
+  format: string;
+  file_path: string;
+  uncompressed_size: number;
+  formats: string[];
+}
+
+export interface FormatDeleteResponse {
+  book_id: number;
+  deleted_format: string;
+  remaining_formats: string[];
+}
+
+export interface UserPreferences {
+  theme: string;
+  default_page_size: number;
+  default_format: string;
+  view_mode: string;
+  active_ai_provider: 'gemini' | 'openai' | 'ollama';
+  gemini_api_key?: string;
+  openai_api_key?: string;
+  ollama_endpoint?: string;
+  ollama_model?: string;
+  embedding_model?: string;
+  auto_import_folder?: string;
+  auto_import_enabled: boolean;
+  auto_import_action: 'skip' | 'create_new' | 'merge';
+  opds_enabled: boolean;
+  opds_port: number;
+  smtp_settings?: {
+    host: string;
+    port: number;
+    username?: string;
+    password?: string;
+    use_tls: boolean;
+    use_ssl: boolean;
+    sender_email?: string;
+  };
+}
+
+export interface TestAIConnectionResponse {
+  success: boolean;
+  provider: string;
+  message: string;
+  available_models: string[];
+}
+
+export interface ScanDropFolderResponse {
+  success: boolean;
+  folder_scanned: string;
+  jobs_count: number;
+  files_processed: string[];
+  message: string;
+}
+
 
