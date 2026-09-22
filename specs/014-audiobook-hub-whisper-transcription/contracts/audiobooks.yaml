@@ -1,0 +1,198 @@
+openapi: 3.1.0
+info:
+  title: xBookLibrary Audiobook Hub & Whisper Transcription API
+  version: 1.0.0
+paths:
+  /api/libraries/{library_id}/books/{book_id}/audio/metadata:
+    get:
+      summary: Get audiobook metadata, narrator, duration, and chapter markers
+      parameters:
+        - name: library_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Audiobook metadata found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudiobookMetadata'
+        '404':
+          description: Book or audio format not found
+
+  /api/libraries/{library_id}/books/{book_id}/audio/stream:
+    get:
+      summary: Stream audiobook with HTTP 206 partial content range support
+      parameters:
+        - name: library_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: Range
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Full audio stream
+        '206':
+          description: Partial content range stream
+
+  /api/libraries/{library_id}/books/{book_id}/audio/progress:
+    get:
+      summary: Get listening progress
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioListeningProgress'
+    post:
+      summary: Update listening progress and sync Calibre #read_status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudioListeningProgressUpdateRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioListeningProgress'
+
+  /api/libraries/{library_id}/books/{book_id}/audio/transcribe:
+    post:
+      summary: Trigger Whisper speech-to-text transcription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TranscriptionRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AudioChapterTranscript'
+
+  /api/libraries/{library_id}/books/{book_id}/audio/transcripts:
+    get:
+      summary: List all transcripts for an audiobook
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AudioChapterTranscript'
+
+components:
+  schemas:
+    AudioChapter:
+      type: object
+      properties:
+        index:
+          type: integer
+        title:
+          type: string
+        start_time:
+          type: number
+        end_time:
+          type: number
+        duration:
+          type: number
+    AudiobookMetadata:
+      type: object
+      properties:
+        book_id:
+          type: integer
+        format:
+          type: string
+        duration_seconds:
+          type: number
+        narrator:
+          type: string
+        chapters:
+          type: array
+          items:
+            $ref: '#/components/schemas/AudioChapter'
+    AudioListeningProgress:
+      type: object
+      properties:
+        book_id:
+          type: integer
+        current_time:
+          type: number
+        current_chapter_index:
+          type: integer
+        progress_percent:
+          type: number
+        playback_speed:
+          type: number
+        is_finished:
+          type: boolean
+    AudioListeningProgressUpdateRequest:
+      type: object
+      required:
+        - current_time
+      properties:
+        current_time:
+          type: number
+        current_chapter_index:
+          type: integer
+        progress_percent:
+          type: number
+        playback_speed:
+          type: number
+    AudioChapterTranscript:
+      type: object
+      properties:
+        id:
+          type: string
+        book_id:
+          type: integer
+        chapter_index:
+          type: integer
+        chapter_title:
+          type: string
+        start_time:
+          type: number
+        end_time:
+          type: number
+        transcript_text:
+          type: string
+        model_used:
+          type: string
+        status:
+          type: string
+    TranscriptionRequest:
+      type: object
+      required:
+        - book_id
+      properties:
+        book_id:
+          type: integer
+        chapter_index:
+          type: integer
+        model_name:
+          type: string

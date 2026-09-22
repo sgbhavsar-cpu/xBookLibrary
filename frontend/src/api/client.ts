@@ -5,6 +5,10 @@
 import type {
   Annotation,
   AnnotationCreateRequest,
+  AudiobookMetadata,
+  AudioChapterTranscript,
+  AudioListeningProgress,
+  AudioListeningProgressUpdateRequest,
   Book,
   BookCustomValues,
   Bookmark,
@@ -510,5 +514,64 @@ export const api = {
       method: 'POST',
       body: settings ? JSON.stringify(settings) : undefined,
     });
+  },
+
+  // --- Audiobook Hub & Whisper Transcription ---
+  async getAudioMetadata(libraryId: string, bookId: number): Promise<AudiobookMetadata> {
+    return request<AudiobookMetadata>(`/api/libraries/${libraryId}/books/${bookId}/audio/metadata`);
+  },
+
+  getAudioStreamUrl(libraryId: string, bookId: number, format?: string): string {
+    const query = format ? `?format=${encodeURIComponent(format)}` : '';
+    return `/api/libraries/${libraryId}/books/${bookId}/audio/stream${query}`;
+  },
+
+  async getAudioProgress(libraryId: string, bookId: number): Promise<AudioListeningProgress | null> {
+    return request<AudioListeningProgress | null>(`/api/libraries/${libraryId}/books/${bookId}/audio/progress`);
+  },
+
+  async saveAudioProgress(
+    libraryId: string,
+    bookId: number,
+    data: AudioListeningProgressUpdateRequest
+  ): Promise<AudioListeningProgress> {
+    return request<AudioListeningProgress>(`/api/libraries/${libraryId}/books/${bookId}/audio/progress`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async transcribeAudio(
+    libraryId: string,
+    bookId: number,
+    chapterIndex?: number,
+    modelName: string = 'whisper-1'
+  ): Promise<AudioChapterTranscript[]> {
+    return request<AudioChapterTranscript[]>(`/api/libraries/${libraryId}/books/${bookId}/audio/transcribe`, {
+      method: 'POST',
+      body: JSON.stringify({
+        book_id: bookId,
+        chapter_index: chapterIndex,
+        model_name: modelName,
+      }),
+    });
+  },
+
+  async getAudioTranscripts(libraryId: string, bookId: number): Promise<AudioChapterTranscript[]> {
+    return request<AudioChapterTranscript[]>(`/api/libraries/${libraryId}/books/${bookId}/audio/transcripts`);
+  },
+
+  async getAudioTranscript(
+    libraryId: string,
+    bookId: number,
+    chapterIndex: number
+  ): Promise<AudioChapterTranscript> {
+    return request<AudioChapterTranscript>(
+      `/api/libraries/${libraryId}/books/${bookId}/audio/transcripts/${chapterIndex}`
+    );
+  },
+
+  getAudioTranscriptExportUrl(libraryId: string, bookId: number, format: string = 'vtt'): string {
+    return `/api/libraries/${libraryId}/books/${bookId}/audio/transcripts/export?format=${encodeURIComponent(format)}`;
   },
 };

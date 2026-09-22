@@ -356,3 +356,69 @@ export interface SMTPSettings {
   sender_email: string;
 }
 
+export interface AudioChapter {
+  index: number;
+  title: string;
+  start_time: number;
+  end_time: number;
+  duration: number;
+}
+
+export interface AudiobookMetadata {
+  book_id: number;
+  format: string;
+  duration_seconds: number;
+  bitrate?: number;
+  sample_rate?: number;
+  channels?: number;
+  narrator?: string;
+  chapters: AudioChapter[];
+}
+
+export interface AudioListeningProgress {
+  book_id: number;
+  format: string;
+  current_time: number;
+  current_chapter_index: number;
+  progress_percent: number;
+  playback_speed: number;
+  is_finished: boolean;
+  last_listened_at?: string;
+}
+
+export interface AudioListeningProgressUpdateRequest {
+  current_time: number;
+  current_chapter_index?: number;
+  progress_percent?: number;
+  playback_speed?: number;
+}
+
+export interface AudioTranscriptSegment {
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface AudioChapterTranscript {
+  id: string;
+  book_id: number;
+  chapter_index: number;
+  chapter_title: string;
+  start_time: number;
+  end_time: number;
+  transcript_text: string;
+  segments: AudioTranscriptSegment[];
+  model_used: string;
+  status: string;
+  created_at?: string;
+}
+
+export interface AudioPlaybackState {
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  playbackSpeed: number;
+  volume: number;
+  currentChapterIndex: number;
+}
+

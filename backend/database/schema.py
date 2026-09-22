@@ -380,5 +380,37 @@ CREATE TABLE IF NOT EXISTS x_kosync_progress (
     device_id TEXT,
     updated_at INTEGER NOT NULL
 );
+
+-- Audiobook Hub & Whisper Transcription Extension Tables
+CREATE TABLE IF NOT EXISTS x_audiobook_metadata (
+    book_id INTEGER PRIMARY KEY,
+    format TEXT NOT NULL,
+    duration_seconds REAL NOT NULL DEFAULT 0.0,
+    bitrate INTEGER,
+    sample_rate INTEGER,
+    channels INTEGER,
+    narrator TEXT,
+    chapters_json TEXT NOT NULL DEFAULT '[]',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_x_audiobook_metadata_format ON x_audiobook_metadata (format);
+
+CREATE TABLE IF NOT EXISTS x_audio_transcripts (
+    id TEXT PRIMARY KEY,
+    book_id INTEGER NOT NULL,
+    chapter_index INTEGER NOT NULL,
+    chapter_title TEXT NOT NULL,
+    start_time REAL NOT NULL,
+    end_time REAL NOT NULL,
+    transcript_text TEXT NOT NULL,
+    segments_json TEXT NOT NULL DEFAULT '[]',
+    model_used TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'completed',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_x_audio_transcripts_book_ch ON x_audio_transcripts (book_id, chapter_index);
 """
+
 

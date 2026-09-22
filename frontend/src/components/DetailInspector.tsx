@@ -5,7 +5,10 @@ import {
   Check,
   CheckCircle,
   Download,
+  Headphones,
   Layers,
+  Loader2,
+  Mic,
   RefreshCw,
   Repeat,
   Send,
@@ -14,6 +17,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useStore } from '../store/useStore';
+import type { AudiobookMetadata } from '../types';
 import { SummaryTabs } from './SummaryTabs';
 
 export const DetailInspector: React.FC = () => {
@@ -26,8 +30,14 @@ export const DetailInspector: React.FC = () => {
     loadBooks,
     loadSeriesList,
     setSendToDeviceOpen,
+    playAudiobook,
+    transcribeAudioChapter,
+    isTranscribing,
+    audioTranscripts,
+    loadAudioTranscripts,
   } = useStore();
 
+  const [bookAudioMeta, setBookAudioMeta] = useState<AudiobookMetadata | null>(null);
   const [isEnriching, setIsEnriching] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
@@ -56,7 +66,20 @@ export const DetailInspector: React.FC = () => {
     api.getBookCustomValues(selectedBook.id, activeLibraryId)
       .then((res) => setCustomVals(res.values || {}))
       .catch((err) => console.error('Failed to load custom values:', err));
-  }, [selectedBook?.id, activeLibraryId]);
+
+    const hasAudio = selectedBook.formats.some((f) =>
+      ['M4B', 'MP3'].includes(f.format.toUpperCase())
+    );
+    if (hasAudio) {
+      api
+        .getAudioMetadata(activeLibraryId, selectedBook.id)
+        .then(setBookAudioMeta)
+        .catch(() => setBookAudioMeta(null));
+      loadAudioTranscripts(selectedBook.id);
+    } else {
+      setBookAudioMeta(null);
+    }
+  }, [selectedBook?.id, activeLibraryId, loadAudioTranscripts]);
 
   if (!selectedBook) {
     return (
@@ -187,6 +210,21 @@ export const DetailInspector: React.FC = () => {
     (f) => ['EPUB', 'PDF', 'CBZ', 'CBR'].includes(f.format.toUpperCase())
   ) || selectedBook.formats[0];
 
+  const audioFormat = selectedBook.formats.find((f) =>
+    ['M4B', 'MP3'].includes(f.format.toUpperCase())
+  );
+
+  const formatDuration = (sec: number) => {
+    const s = Math.floor(sec || 0);
+    const hrs = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    const secs = s % 60;
+    if (hrs > 0) {
+      return `${hrs}h ${mins}m ${secs}s`;
+    }
+    return `${mins}m ${secs}s`;
+  };
+
   return (
     <aside
       style={{
@@ -243,7 +281,7 @@ export const DetailInspector: React.FC = () => {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
           {/* Read Now Button */}
-          {primaryFormat && (
+          {primaryFormat && !['M4B', 'MP3'].includes(primaryFormat.format.toUpperCase()) && (
             <button
               className="btn btn-primary"
               onClick={() => openReader(selectedBook.id, primaryFormat.format)}
@@ -251,6 +289,33 @@ export const DetailInspector: React.FC = () => {
             >
               <BookOpen size={15} />
               <span>Read {primaryFormat.format}</span>
+            </button>
+          )}
+
+          {/* Listen Audiobook Action */}
+          {audioFormat && (
+            <button
+              className="btn btn-primary"
+              onClick={() => playAudiobook(selectedBook, audioFormat.format)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                background:
+                  primaryFormat && !['M4B', 'MP3'].includes(primaryFormat.format.toUpperCase())
+                    ? 'var(--accent-surface)'
+                    : undefined,
+                color:
+                  primaryFormat && !['M4B', 'MP3'].includes(primaryFormat.format.toUpperCase())
+                    ? 'var(--accent-primary)'
+                    : undefined,
+                borderColor:
+                  primaryFormat && !['M4B', 'MP3'].includes(primaryFormat.format.toUpperCase())
+                    ? 'var(--accent-primary)'
+                    : undefined,
+              }}
+            >
+              <Headphones size={15} />
+              <span>Listen {audioFormat.format}</span>
             </button>
           )}
 
@@ -487,6 +552,121 @@ export const DetailInspector: React.FC = () => {
         </button>
       </div>
 
+      {/* Audiobook Hub & Technical Specs (Feature 014) */}
+      {bookAudioMeta && (
+        <div
+          style={{
+            padding: '12px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--bg-surface-elevated)',
+            border: '1px solid var(--border-subtle)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'var(--accent-primary)',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <Headphones size={13} /> Audiobook Hub ({bookAudioMeta.format.toUpperCase()})
+            </span>
+            <span className="badge badge-primary" style={{ fontSize: '10.5px' }}>
+              {formatDuration(bookAudioMeta.duration_seconds)}
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '6px 12px',
+              fontSize: '11.5px',
+            }}
+          >
+            {bookAudioMeta.narrator && (
+              <div style={{ gridColumn: 'span 2' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Narrator: </span>
+                <strong style={{ color: 'var(--text-primary)' }}>{bookAudioMeta.narrator}</strong>
+              </div>
+            )}
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>Chapters: </span>
+              <strong>{bookAudioMeta.chapters.length}</strong>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>Bitrate: </span>
+              <strong>{bookAudioMeta.bitrate ? `${Math.round(bookAudioMeta.bitrate / 1000)} kbps` : 'N/A'}</strong>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>Sample Rate: </span>
+              <strong>{bookAudioMeta.sample_rate ? `${(bookAudioMeta.sample_rate / 1000).toFixed(1)} kHz` : 'N/A'}</strong>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>Channels: </span>
+              <strong>{bookAudioMeta.channels ? (bookAudioMeta.channels === 2 ? 'Stereo (2ch)' : `${bookAudioMeta.channels} ch`) : 'N/A'}</strong>
+            </div>
+          </div>
+
+          {/* Whisper Transcription Trigger & Exports */}
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Mic size={12} /> Whisper Transcription
+              </span>
+              {audioTranscripts.length > 0 && (
+                <span style={{ fontSize: '10.5px', color: '#10b981', fontWeight: 600 }}>
+                  {audioTranscripts.length} {audioTranscripts.length === 1 ? 'Chapter' : 'Chapters'} Transcribed
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => transcribeAudioChapter(selectedBook.id)}
+                disabled={isTranscribing}
+                style={{ flex: 1, fontSize: '11px', padding: '5px 8px' }}
+                title="Transcribe speech with Whisper and index into RAG vector store"
+              >
+                {isTranscribing ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin" />
+                    <span>Transcribing with Whisper...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={12} color="var(--accent-primary)" />
+                    <span>{audioTranscripts.length > 0 ? 'Re-transcribe with Whisper' : 'Transcribe Audio with Whisper'}</span>
+                  </>
+                )}
+              </button>
+
+              {audioTranscripts.length > 0 && activeLibraryId && (
+                <a
+                  href={api.getAudioTranscriptExportUrl(activeLibraryId, selectedBook.id, 'vtt')}
+                  download={`${selectedBook.title}.vtt`}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '11px', padding: '5px 8px' }}
+                  title="Export WebVTT transcript"
+                >
+                  <Download size={11} />
+                  <span>VTT</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Formats Section */}
       <div>
         <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
@@ -495,6 +675,7 @@ export const DetailInspector: React.FC = () => {
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           {selectedBook.formats.map((fmt) => {
             const canRead = ['EPUB', 'PDF', 'CBZ', 'CBR'].includes(fmt.format.toUpperCase());
+            const isAudioFmt = ['M4B', 'MP3'].includes(fmt.format.toUpperCase());
             return (
               <div key={fmt.format} style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
                 {canRead && (
@@ -506,6 +687,17 @@ export const DetailInspector: React.FC = () => {
                   >
                     <BookOpen size={12} />
                     <span>Read {fmt.format}</span>
+                  </button>
+                )}
+                {isAudioFmt && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => playAudiobook(selectedBook, fmt.format)}
+                    style={{ fontSize: '11.5px', padding: '4px 8px', color: 'var(--accent-primary)' }}
+                    title={`Listen ${fmt.format}`}
+                  >
+                    <Headphones size={12} />
+                    <span>Listen {fmt.format}</span>
                   </button>
                 )}
                 <a

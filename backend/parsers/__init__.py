@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict, Set
 
 from backend.domain.parsers import BookParserStrategy, CorruptedBookError
+from backend.parsers.audio_parser import AudiobookParser
 from backend.parsers.comic_parser import ComicParser
 from backend.parsers.docx_parser import DocxParser
 from backend.parsers.epub_parser import EpubParser
@@ -26,6 +27,8 @@ class ParserRegistry:
         ".docx": DocxParser(),
         ".txt": TextParser(),
         ".md": TextParser(),
+        ".m4b": AudiobookParser(),
+        ".mp3": AudiobookParser(),
     }
 
     @classmethod
@@ -45,6 +48,7 @@ class ParserRegistry:
 
 __all__ = [
     "ParserRegistry",
+    "AudiobookParser",
     "EpubParser",
     "PdfParser",
     "MobiParser",

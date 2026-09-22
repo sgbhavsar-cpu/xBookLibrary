@@ -24,6 +24,7 @@ dependencies = [
     "litellm>=1.102.0",
     "respx>=0.23.1",
     "lancedb<=0.38.0",
+    "mutagen>=1.48.1",
 ]
 
 [project.optional-dependencies]

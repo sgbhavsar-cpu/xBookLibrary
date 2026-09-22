@@ -11,6 +11,9 @@ import { SynthesisStudioModal } from './components/SynthesisStudioModal';
 import { VirtualLibraryBar } from './components/VirtualLibraryBar';
 import { SendToDeviceModal } from './components/devices/SendToDeviceModal';
 import { DeviceSettingsModal } from './components/devices/DeviceSettingsModal';
+import { AudioController } from './components/audiobook/AudioController';
+import { AudiobookPlayer } from './components/audiobook/AudiobookPlayer';
+import { PersistentAudioBar } from './components/audiobook/PersistentAudioBar';
 import { useStore } from './store/useStore';
 import { ReaderView } from './views/ReaderView';
 
@@ -19,6 +22,8 @@ export const App: React.FC = () => {
     readerBookId,
     viewMode,
     loadLibraries,
+    activeAudiobook,
+    isAudiobookPlayerOpen,
   } = useStore();
 
   useEffect(() => {
@@ -29,6 +34,8 @@ export const App: React.FC = () => {
   if (readerBookId !== null) {
     return <ReaderView />;
   }
+
+  const isMiniPlayerActive = activeAudiobook !== null && !isAudiobookPlayerOpen;
 
   return (
     <div
@@ -46,7 +53,16 @@ export const App: React.FC = () => {
       <HeaderToolbar />
 
       {/* 2. Responsive 3-Pane Body */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          overflow: 'hidden',
+          position: 'relative',
+          paddingBottom: isMiniPlayerActive ? '64px' : undefined,
+          transition: 'padding-bottom 0.2s ease',
+        }}
+      >
         {/* Left Pane: Hierarchy & Taxonomy Filter Sidebar */}
         <FilterSidebar />
 
@@ -63,6 +79,15 @@ export const App: React.FC = () => {
       {/* 3. Bottom Status Bar */}
       <StatusBar />
 
+      {/* Headless Audio Controller (always active during playback) */}
+      {activeAudiobook && <AudioController />}
+
+      {/* Persistent Mini-Player Bar (visible in library mode) */}
+      <PersistentAudioBar />
+
+      {/* Full Audiobook Player Workspace (modal overlay) */}
+      {activeAudiobook && isAudiobookPlayerOpen && <AudiobookPlayer />}
+
       {/* Global Drawers & Modals */}
       <RAGChatDrawer />
       <SynthesisStudioModal />
@@ -74,3 +99,4 @@ export const App: React.FC = () => {
 };
 
 export default App;
+

@@ -7,6 +7,9 @@ import { api } from '../api/client';
 import type {
   Annotation,
   AnnotationCreateRequest,
+  AudiobookMetadata,
+  AudioChapterTranscript,
+  AudioPlaybackState,
   Book,
   Bookmark,
   BookmarkCreateRequest,
@@ -118,6 +121,42 @@ interface AppStore {
   deviceSyncLogs: DeviceSyncLog[];
   loadDevices: () => Promise<void>;
   loadSyncLogs: () => Promise<void>;
+
+  // Audiobook Hub & Whisper Transcription
+  activeAudiobook: {
+    bookId: number;
+    title: string;
+    author: string;
+    coverUrl?: string;
+    format: string;
+    narrator?: string;
+  } | null;
+  audioMetadata: AudiobookMetadata | null;
+  audioPlayback: AudioPlaybackState;
+  audioTranscripts: AudioChapterTranscript[];
+  isAudiobookPlayerOpen: boolean;
+  isTranscribing: boolean;
+  audioSeekTarget: number | null;
+  sleepTimerMinutes: number | null;
+  sleepTimerRemaining: number | null;
+
+  playAudiobook: (book: Book, format?: string) => Promise<void>;
+  closeAudiobookPlayer: () => void;
+  openAudiobookPlayer: () => void;
+  stopAudiobook: () => void;
+  setAudioPlaying: (isPlaying: boolean) => void;
+  setAudioCurrentTime: (time: number) => void;
+  setAudioDuration: (duration: number) => void;
+  setAudioPlaybackSpeed: (speed: number) => void;
+  setAudioVolume: (volume: number) => void;
+  setAudioChapter: (chapterIndex: number) => void;
+  seekAudio: (time: number) => void;
+  clearAudioSeekTarget: () => void;
+  setSleepTimer: (minutes: number | null) => void;
+  tickSleepTimer: () => void;
+  syncAudioProgress: () => Promise<void>;
+  loadAudioTranscripts: (bookId: number) => Promise<void>;
+  transcribeAudioChapter: (bookId: number, chapterIndex?: number) => Promise<void>;
 }
 
 const initialTheme = (localStorage.getItem('xbook_theme') as 'light' | 'dark') || 'dark';
@@ -488,6 +527,221 @@ export const useStore = create<AppStore>((set, get) => ({
       set({ deviceSyncLogs: logs });
     } catch (err) {
       console.error('Failed to load sync logs:', err);
+    }
+  },
+
+  // Audiobook Hub & Whisper Transcription
+  activeAudiobook: null,
+  audioMetadata: null,
+  audioPlayback: {
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    playbackSpeed: 1.0,
+    volume: 1.0,
+    currentChapterIndex: 0,
+  },
+  audioTranscripts: [],
+  isAudiobookPlayerOpen: false,
+  isTranscribing: false,
+  audioSeekTarget: null,
+  sleepTimerMinutes: null,
+  sleepTimerRemaining: null,
+
+  playAudiobook: async (book: Book, format?: string) => {
+    const libId = get().activeLibraryId;
+    if (!libId) return;
+    const fmt = (
+      format ||
+      book.formats.find((f) => ['M4B', 'MP3'].includes(f.format.toUpperCase()))?.format ||
+      'M4B'
+    ).toUpperCase();
+
+    // Set active audiobook shell
+    set({
+      activeAudiobook: {
+        bookId: book.id,
+        title: book.title,
+        author: (book.authors || []).join(', ') || 'Unknown',
+        coverUrl: book.has_cover ? api.getBookCoverUrl(book.id) : undefined,
+        format: fmt,
+      },
+      isAudiobookPlayerOpen: true,
+    });
+
+    try {
+      // Load technical metadata and saved progress
+      const [meta, progress] = await Promise.all([
+        api.getAudioMetadata(libId, book.id),
+        api.getAudioProgress(libId, book.id),
+      ]);
+
+      const curTime = progress?.current_time || 0;
+      const curChap = progress?.current_chapter_index || 0;
+      const curSpeed = progress?.playback_speed || 1.0;
+
+      set((state) => ({
+        audioMetadata: meta,
+        audioSeekTarget: curTime > 0 ? curTime : null,
+        activeAudiobook: state.activeAudiobook
+          ? {
+              ...state.activeAudiobook,
+              narrator: meta.narrator,
+            }
+          : null,
+        audioPlayback: {
+          ...state.audioPlayback,
+          currentTime: curTime,
+          duration: meta.duration_seconds,
+          playbackSpeed: curSpeed,
+          currentChapterIndex: curChap,
+          isPlaying: true,
+        },
+      }));
+
+      // Also load transcripts
+      get().loadAudioTranscripts(book.id);
+    } catch (err) {
+      console.error('Failed to initialize audiobook playback:', err);
+    }
+  },
+
+  closeAudiobookPlayer: () => {
+    get().closeReader();
+    set({ isAudiobookPlayerOpen: false });
+  },
+  openAudiobookPlayer: () => set({ isAudiobookPlayerOpen: true }),
+  stopAudiobook: () => {
+    get().syncAudioProgress();
+    get().closeReader();
+    set({
+      activeAudiobook: null,
+      audioMetadata: null,
+      audioTranscripts: [],
+      isAudiobookPlayerOpen: false,
+      audioSeekTarget: null,
+      sleepTimerMinutes: null,
+      sleepTimerRemaining: null,
+      audioPlayback: {
+        ...get().audioPlayback,
+        isPlaying: false,
+        currentTime: 0,
+      },
+    });
+  },
+  setAudioPlaying: (isPlaying: boolean) =>
+    set((state) => ({
+      audioPlayback: { ...state.audioPlayback, isPlaying },
+    })),
+  setAudioCurrentTime: (time: number) =>
+    set((state) => ({
+      audioPlayback: { ...state.audioPlayback, currentTime: time },
+    })),
+  setAudioDuration: (duration: number) =>
+    set((state) => ({
+      audioPlayback: { ...state.audioPlayback, duration },
+    })),
+  setAudioPlaybackSpeed: (speed: number) =>
+    set((state) => ({
+      audioPlayback: { ...state.audioPlayback, playbackSpeed: speed },
+    })),
+  setAudioVolume: (volume: number) =>
+    set((state) => ({
+      audioPlayback: { ...state.audioPlayback, volume },
+    })),
+  setAudioChapter: (chapterIndex: number) => {
+    const meta = get().audioMetadata;
+    if (!meta || !meta.chapters[chapterIndex]) return;
+    const targetSec = meta.chapters[chapterIndex].start_time;
+    set((state) => ({
+      audioSeekTarget: targetSec,
+      audioPlayback: {
+        ...state.audioPlayback,
+        currentChapterIndex: chapterIndex,
+        currentTime: targetSec,
+      },
+    }));
+    get().syncAudioProgress();
+  },
+  seekAudio: (time: number) => {
+    set((state) => ({
+      audioSeekTarget: time,
+      audioPlayback: {
+        ...state.audioPlayback,
+        currentTime: time,
+      },
+    }));
+  },
+  clearAudioSeekTarget: () => set({ audioSeekTarget: null }),
+  setSleepTimer: (minutes: number | null) => {
+    set({
+      sleepTimerMinutes: minutes,
+      sleepTimerRemaining: minutes ? minutes * 60 : null,
+    });
+  },
+  tickSleepTimer: () => {
+    const rem = get().sleepTimerRemaining;
+    if (rem === null) return;
+    if (rem <= 1) {
+      set((state) => ({
+        sleepTimerMinutes: null,
+        sleepTimerRemaining: null,
+        audioPlayback: { ...state.audioPlayback, isPlaying: false },
+      }));
+    } else {
+      set({ sleepTimerRemaining: rem - 1 });
+    }
+  },
+
+  syncAudioProgress: async () => {
+    const libId = get().activeLibraryId;
+    const active = get().activeAudiobook;
+    const playback = get().audioPlayback;
+    if (!libId || !active) return;
+    try {
+      await api.saveAudioProgress(libId, active.bookId, {
+        current_time: playback.currentTime,
+        current_chapter_index: playback.currentChapterIndex,
+        playback_speed: playback.playbackSpeed,
+      });
+    } catch (err) {
+      console.error('Failed to sync audio progress:', err);
+    }
+  },
+
+  loadAudioTranscripts: async (bookId: number) => {
+    const libId = get().activeLibraryId;
+    if (!libId) return;
+    try {
+      const transcripts = await api.getAudioTranscripts(libId, bookId);
+      set({ audioTranscripts: transcripts });
+    } catch (err) {
+      console.error('Failed to load audio transcripts:', err);
+    }
+  },
+
+  transcribeAudioChapter: async (bookId: number, chapterIndex?: number) => {
+    const libId = get().activeLibraryId;
+    if (!libId) return;
+    set({ isTranscribing: true });
+    try {
+      const newTranscripts = await api.transcribeAudio(libId, bookId, chapterIndex);
+      set((state) => {
+        const existing = [...state.audioTranscripts];
+        for (const nt of newTranscripts) {
+          const idx = existing.findIndex((t) => t.chapter_index === nt.chapter_index);
+          if (idx >= 0) {
+            existing[idx] = nt;
+          } else {
+            existing.push(nt);
+          }
+        }
+        existing.sort((a, b) => a.chapter_index - b.chapter_index);
+        return { audioTranscripts: existing, isTranscribing: false };
+      });
+    } catch (err) {
+      console.error('Failed to transcribe audio:', err);
+      set({ isTranscribing: false });
     }
   },
 }));

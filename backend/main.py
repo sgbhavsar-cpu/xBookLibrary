@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.api.audiobooks_router import router as audiobooks_router
 from backend.api.books_router import router as books_router
 from backend.api.conversion_router import router as conversion_router
 from backend.api.custom_columns_router import router as custom_columns_router
@@ -64,6 +65,7 @@ app.include_router(reader_router)
 app.include_router(devices_router)
 app.include_router(kobo_sync_router)
 app.include_router(kosync_router)
+app.include_router(audiobooks_router)
 
 
 @app.get("/health", tags=["Health"])
