@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class ExecutiveSnapshot(BaseModel):
@@ -24,6 +24,10 @@ class ChapterSummary(BaseModel):
     summary: str  # Narrative synthesis of chapter progression
     key_takeaways: List[str] = Field(default_factory=list)  # Specific learnings/takeaways
     important_quotes: List[str] = Field(default_factory=list)  # Direct quotes or notable excerpts
+
+    @computed_field
+    def key_points(self) -> List[str]:
+        return self.key_takeaways
 
 
 class ConceptualIndex(BaseModel):
@@ -57,3 +61,37 @@ class BookSummary(BaseModel):
     chapters: List[ChapterSummary] = Field(default_factory=list)
     conceptual_index: ConceptualIndex
     metadata: SummaryMetadata
+
+    # Backward compatibility fields for frontend clients
+    @computed_field
+    def executive_summary(self) -> str:
+        snap = self.executive_snapshot
+        args = "\n".join(f"• {a}" for a in snap.key_arguments)
+        if args:
+            return f"{snap.hook}\n\n{snap.core_thesis}\n\nKey Arguments:\n{args}"
+        return f"{snap.hook}\n\n{snap.core_thesis}"
+
+    @computed_field
+    def detailed_summary(self) -> str:
+        return self.executive_snapshot.core_thesis
+
+    @computed_field
+    def key_takeaways(self) -> List[str]:
+        return self.conceptual_index.key_takeaways
+
+    @computed_field
+    def chapter_summaries(self) -> List[ChapterSummary]:
+        return self.chapters
+
+    @computed_field
+    def is_stale(self) -> bool:
+        return False
+
+    @computed_field
+    def model_used(self) -> str:
+        return self.metadata.model_name
+
+    @computed_field
+    def generated_at(self) -> str:
+        return self.metadata.generated_at.isoformat()
+

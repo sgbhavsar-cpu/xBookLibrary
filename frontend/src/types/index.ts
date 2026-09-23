@@ -82,18 +82,40 @@ export interface ChapterSummary {
   chapter_index: number;
   chapter_title: string;
   summary: string;
-  key_points: string[];
+  key_points?: string[];
+  key_takeaways?: string[];
+  important_quotes?: string[];
+}
+
+export interface ExecutiveSnapshot {
+  hook: string;
+  core_thesis: string;
+  target_audience: string;
+  key_arguments: string[];
+  estimated_reading_time_minutes: number;
+}
+
+export interface ConceptualIndex {
+  frameworks?: string[];
+  key_takeaways?: string[];
+  quotable_moments?: Array<{ quote: string; source: string }>;
+  action_items?: string[];
 }
 
 export interface BookSummary {
+  id?: number;
   book_id: number;
-  executive_summary: string;
-  detailed_summary: string;
-  key_takeaways: string[];
-  chapter_summaries: ChapterSummary[];
-  is_stale: boolean;
-  model_used: string;
-  generated_at: string;
+  executive_snapshot?: ExecutiveSnapshot;
+  chapters?: ChapterSummary[];
+  conceptual_index?: ConceptualIndex;
+
+  executive_summary?: string;
+  detailed_summary?: string;
+  key_takeaways?: string[];
+  chapter_summaries?: ChapterSummary[];
+  is_stale?: boolean;
+  model_used?: string;
+  generated_at?: string;
 }
 
 export interface ChatCitation {
