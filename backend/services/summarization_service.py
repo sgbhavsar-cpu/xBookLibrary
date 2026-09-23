@@ -301,13 +301,14 @@ class SummarizationService:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
             ]
-            res = await litellm.acompletion(
-                model=self.llm_adapter.model_name,
+            content = await self.llm_adapter.generate_completion(
                 messages=messages,
                 temperature=0.2,
                 response_format={"type": "json_object"},
             )
-            content = res.choices[0].message.content
+            parsed = self.llm_adapter._parse_json_response(content)
+            if parsed:
+                return parsed
             return json.loads(content)
         except Exception:
             # Deterministic fallback
@@ -328,8 +329,6 @@ class SummarizationService:
     ) -> Dict[str, Any]:
         """Reduce Step: Synthesizes chapter summaries into Executive Snapshot."""
         try:
-            import litellm
-
             system_prompt = (
                 "You are an executive knowledge synthesizer. Given chapter summaries of a book, "
                 "synthesize a comprehensive multi-resolution book summary in pure JSON.\n"
@@ -365,13 +364,14 @@ class SummarizationService:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content[:15000]},
             ]
-            res = await litellm.acompletion(
-                model=self.llm_adapter.model_name,
+            content = await self.llm_adapter.generate_completion(
                 messages=messages,
                 temperature=0.2,
                 response_format={"type": "json_object"},
             )
-            content = res.choices[0].message.content
+            parsed = self.llm_adapter._parse_json_response(content)
+            if parsed:
+                return parsed
             return json.loads(content)
         except Exception:
             # Deterministic fallback
@@ -407,8 +407,6 @@ class SummarizationService:
     ) -> Dict[str, Any]:
         """Single-Pass Step: Synthesizes complete multi-resolution summary directly."""
         try:
-            import litellm
-
             system_prompt = (
                 "You are an executive knowledge synthesizer. Summarize this short book or essay "
                 "into a tiered multi-resolution summary in pure JSON.\n"
@@ -437,13 +435,15 @@ class SummarizationService:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
             ]
-            res = await litellm.acompletion(
-                model=self.llm_adapter.model_name,
+            content = await self.llm_adapter.generate_completion(
                 messages=messages,
                 temperature=0.2,
                 response_format={"type": "json_object"},
             )
-            return json.loads(res.choices[0].message.content)
+            parsed = self.llm_adapter._parse_json_response(content)
+            if parsed:
+                return parsed
+            return json.loads(content)
         except Exception:
             return {
                 "executive_snapshot": {

@@ -45,6 +45,7 @@ async def get_book_summary(book_id: int):
 
 
 @router.post("/{book_id}/summary", response_model=BookSummary)
+@router.post("/{book_id}/summary/generate", response_model=BookSummary)
 async def generate_book_summary(
     book_id: int,
     request: Optional[GenerateSummaryRequest] = None,

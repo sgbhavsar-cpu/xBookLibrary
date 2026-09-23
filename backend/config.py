@@ -17,11 +17,11 @@ class UserPreferences(BaseModel):
     view_mode: str = "grid"
 
     # AI & LLM Services Configuration
-    active_ai_provider: str = "gemini"  # "gemini" | "openai" | "ollama"
+    active_ai_provider: str = "ollama"  # "gemini" | "openai" | "ollama"
     gemini_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
-    ollama_endpoint: str = "http://localhost:11434"
-    ollama_model: str = "llama3"
+    ollama_endpoint: str = "http://127.0.0.1:11434"
+    ollama_model: str = "qwen2.5-coder:7b"
     embedding_model: str = "all-MiniLM-L6-v2"
 
     # Drop Folder / Auto-Import Configuration
@@ -115,4 +115,10 @@ class ConfigManager:
     def get_ollama_endpoint(self) -> str:
         import os
 
-        return os.environ.get("OLLAMA_HOST") or self.load().preferences.ollama_endpoint
+        ep = os.environ.get("OLLAMA_HOST") or self.load().preferences.ollama_endpoint or "http://127.0.0.1:11434"
+        if "localhost:11434" in ep:
+            ep = ep.replace("localhost:11434", "127.0.0.1:11434")
+        return ep.rstrip("/")
+
+    def get_ollama_model(self) -> str:
+        return self.load().preferences.ollama_model or "qwen2.5-coder:7b"

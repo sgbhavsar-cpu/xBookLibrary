@@ -23,13 +23,61 @@ class LiteLLMClientAdapter:
         self.model_name = model_name or self._resolve_default_model()
 
     def _resolve_default_model(self) -> str:
-        """Auto-detects Gemini 2.0 Flash if API key is present,
-        otherwise falls back to local Ollama.
-        """
+        """Resolves active LLM model based on user preferences."""
+        prefs = self.config_manager.load().preferences
+        provider = (prefs.active_ai_provider or "").lower()
+        if provider == "ollama":
+            return f"ollama/{self.config_manager.get_ollama_model()}"
+        elif provider == "openai" and self.config_manager.get_openai_api_key():
+            return "openai/gpt-4o-mini"
+        elif provider == "gemini":
+            gemini_key = self.config_manager.get_gemini_api_key()
+            if gemini_key:
+                return "gemini/gemini-2.0-flash"
+
+        # Fallback detection
         gemini_key = self.config_manager.get_gemini_api_key()
         if gemini_key:
             return "gemini/gemini-2.0-flash"
-        return "ollama/llama3.2-vision"
+        return f"ollama/{self.config_manager.get_ollama_model()}"
+
+    def get_model_kwargs(self) -> dict:
+        """Returns API keys or base URLs required by LiteLLM for the active model."""
+        kwargs: dict = {}
+        model = self.model_name
+        if model.startswith("gemini/"):
+            kwargs["api_key"] = self.config_manager.get_gemini_api_key()
+        elif model.startswith("openai/"):
+            kwargs["api_key"] = self.config_manager.get_openai_api_key()
+        elif model.startswith("ollama/"):
+            kwargs["api_base"] = self.config_manager.get_ollama_endpoint()
+        return kwargs
+
+    async def generate_completion(
+        self,
+        messages: List[dict],
+        temperature: float = 0.2,
+        response_format: Optional[dict] = None,
+    ) -> str:
+        """Executes text completion with automatic credentials and endpoint mapping."""
+        kwargs = self.get_model_kwargs()
+        if response_format:
+            kwargs["response_format"] = response_format
+        response = await litellm.acompletion(
+            model=self.model_name,
+            messages=messages,
+            temperature=temperature,
+            **kwargs,
+        )
+        return response.choices[0].message.content or ""
+
+    async def generate_response(self, prompt: str, system_instruction: str) -> str:
+        """Standard assistant completion helper for QA and chat."""
+        messages = [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": prompt},
+        ]
+        return await self.generate_completion(messages=messages, temperature=0.2)
 
     async def extract_from_images(
         self,

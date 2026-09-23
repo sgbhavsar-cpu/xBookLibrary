@@ -23,6 +23,7 @@ from backend.providers.embedding_provider import (
     GeminiEmbeddingProvider,
     MockEmbeddingProvider,
 )
+from backend.providers.llm_adapter import LiteLLMClientAdapter
 from backend.services.document_synthesis_service import DocumentSynthesisService
 from backend.services.library_manager import LibraryManager
 from backend.services.rag_search import RAGSearchService
@@ -56,34 +57,12 @@ def _get_embedding_provider() -> BaseEmbeddingProvider:
 
 
 async def _default_llm_call(prompt: str, system_instruction: str) -> str:
-    cfg_mgr = ConfigManager()
-    gemini_key = cfg_mgr.get_gemini_api_key() or os.environ.get("GEMINI_API_KEY")
-    if gemini_key and not gemini_key.startswith("fake"):
-        model = "gemini/gemini-2.0-flash"
-        kwargs: dict[str, Any] = {
-            "model": model,
-            "api_key": gemini_key,
-            "messages": [
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.2,
-        }
-    else:
-        model = "ollama/llama3.2"
-        kwargs = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.2,
-        }
+    adapter = LiteLLMClientAdapter()
     try:
-        res = await litellm.acompletion(**kwargs)
-        return res.choices[0].message.content or ""
-    except Exception:
-        return "I could not generate a response from the model at this time."
+        return await adapter.generate_response(prompt=prompt, system_instruction=system_instruction)
+    except Exception as e:
+        return f"I could not generate a response from the model at this time ({e})."
+
 
 
 async def _resolve_library(library_id: str | None = None) -> tuple[str, Path]:

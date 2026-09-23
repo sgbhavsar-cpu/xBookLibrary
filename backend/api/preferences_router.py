@@ -60,7 +60,9 @@ async def test_ai_connection(req: TestAIConnectionRequest):
     provider = req.provider.lower()
 
     if provider == "ollama":
-        endpoint = (req.ollama_endpoint or "http://localhost:11434").rstrip("/")
+        endpoint = (req.ollama_endpoint or "http://127.0.0.1:11434").rstrip("/")
+        if "localhost:11434" in endpoint:
+            endpoint = endpoint.replace("localhost:11434", "127.0.0.1:11434")
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 res = await client.get(f"{endpoint}/api/tags")

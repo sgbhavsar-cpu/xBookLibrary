@@ -17,40 +17,19 @@ from backend.providers.embedding_provider import (
     GeminiEmbeddingProvider,
     MockEmbeddingProvider,
 )
+from backend.providers.llm_adapter import LiteLLMClientAdapter
 from backend.services.rag_chat_agent import RAGChatAgent
 from backend.services.rag_indexer import RAGIndexer
 from backend.services.rag_search import RAGSearchService
 
 
 async def _default_llm_call(prompt: str, system_instruction: str) -> str:
-    cfg_mgr = ConfigManager()
-    gemini_key = cfg_mgr.get_gemini_api_key() or os.environ.get("GEMINI_API_KEY")
-    if gemini_key and not gemini_key.startswith("fake"):
-        model = "gemini/gemini-2.0-flash"
-        kwargs: dict = {
-            "model": model,
-            "api_key": gemini_key,
-            "messages": [
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.2,
-        }
-    else:
-        model = "ollama/llama3.2"
-        kwargs = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.2,
-        }
+    adapter = LiteLLMClientAdapter()
     try:
-        res = await litellm.acompletion(**kwargs)
-        return res.choices[0].message.content or ""
-    except Exception:
-        return "I could not generate a response from the model at this time."
+        return await adapter.generate_response(prompt=prompt, system_instruction=system_instruction)
+    except Exception as e:
+        return f"I could not generate a response from the model at this time ({e})."
+
 
 
 router = APIRouter(prefix="/api", tags=["RAG & Conversational QA"])
