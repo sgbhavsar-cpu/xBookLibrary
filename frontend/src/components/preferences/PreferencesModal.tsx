@@ -51,6 +51,10 @@ export const PreferencesModal: React.FC = () => {
     auto_import_folder: '',
     auto_import_enabled: false,
     auto_import_action: 'merge',
+    delete_source_after_import: true,
+    auto_download_metadata: false,
+    auto_index_rag: false,
+    auto_generate_summary: false,
     opds_enabled: true,
     opds_port: 8000,
   });
@@ -88,6 +92,10 @@ export const PreferencesModal: React.FC = () => {
         ollama_model: userPreferences.ollama_model || 'llama3',
         embedding_model: userPreferences.embedding_model || 'all-MiniLM-L6-v2',
         auto_import_folder: userPreferences.auto_import_folder || '',
+        delete_source_after_import: userPreferences.delete_source_after_import ?? true,
+        auto_download_metadata: userPreferences.auto_download_metadata ?? false,
+        auto_index_rag: userPreferences.auto_index_rag ?? false,
+        auto_generate_summary: userPreferences.auto_generate_summary ?? false,
       });
     }
   }, [userPreferences]);
@@ -165,7 +173,7 @@ export const PreferencesModal: React.FC = () => {
         style={{
           width: '840px',
           maxWidth: '96vw',
-          height: '620px',
+          height: '680px',
           maxHeight: '92vh',
           background: 'var(--bg-surface)',
           border: '1px solid var(--border-default)',
@@ -596,7 +604,25 @@ export const PreferencesModal: React.FC = () => {
                       Enable Background File System Watcher
                     </span>
                     <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', display: 'block' }}>
-                      Automatically detects and imports newly saved files in real time.
+                      Continuously monitors intake folder in real time (built-in; no external Windows services required).
+                    </span>
+                  </div>
+                </label>
+
+                {/* Remove Source File After Ingestion Toggle */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={pref.delete_source_after_import ?? true}
+                    onChange={(e) => setPref({ ...pref, delete_source_after_import: e.target.checked })}
+                    style={{ width: '16px', height: '16px', accentColor: 'var(--accent-primary)' }}
+                  />
+                  <div>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Remove Source Files From Drop Folder After Successful Import
+                    </span>
+                    <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', display: 'block' }}>
+                      Deletes imported books from the intake directory once safely stored in the library. If import fails, files are kept.
                     </span>
                   </div>
                 </label>
@@ -616,6 +642,81 @@ export const PreferencesModal: React.FC = () => {
                     <option value="skip">Skip if duplicate is detected</option>
                     <option value="create_new">Always create a new book entry</option>
                   </select>
+                </div>
+
+                {/* Automated Post-Ingestion Workflows Card */}
+                <div
+                  style={{
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    padding: '12px 14px',
+                    backgroundColor: 'var(--bg-secondary)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    marginTop: '4px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={15} style={{ color: 'var(--accent-primary)' }} />
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Automated Post-Ingestion Workflows
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', margin: 0 }}>
+                    Automatically trigger intelligent background operations whenever books are imported (via drop folder or manual upload).
+                  </p>
+
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={pref.auto_download_metadata ?? false}
+                      onChange={(e) => setPref({ ...pref, auto_download_metadata: e.target.checked })}
+                      style={{ width: '16px', height: '16px', marginTop: '2px', accentColor: 'var(--accent-primary)' }}
+                    />
+                    <div>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        Automatically Download &amp; Enrich Online Metadata
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>
+                        Queries Google Books, OpenLibrary, and CrossRef in the background to fetch covers, ISBNs, publishers, and descriptions.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={pref.auto_index_rag ?? false}
+                      onChange={(e) => setPref({ ...pref, auto_index_rag: e.target.checked })}
+                      style={{ width: '16px', height: '16px', marginTop: '2px', accentColor: 'var(--accent-primary)' }}
+                    />
+                    <div>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        Automatically Index for RAG Library Chat
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>
+                        Extracts text and indexes semantic vectors into LanceDB for instant search &amp; conversational chat.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={pref.auto_generate_summary ?? false}
+                      onChange={(e) => setPref({ ...pref, auto_generate_summary: e.target.checked })}
+                      style={{ width: '16px', height: '16px', marginTop: '2px', accentColor: 'var(--accent-primary)' }}
+                    />
+                    <div>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        Automatically Generate AI Multi-Resolution Summary
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>
+                        Produces Executive Snapshot, Conceptual Index, and Chapter Breakdowns using your configured AI provider ({pref.active_ai_provider}).
+                      </span>
+                    </div>
+                  </label>
                 </div>
 
                 {/* Trigger Manual Scan */}

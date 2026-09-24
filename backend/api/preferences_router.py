@@ -51,6 +51,11 @@ async def update_preferences(updated: UserPreferences):
     cfg = cfg_mgr.load()
     cfg.preferences = updated
     cfg_mgr.save(cfg)
+
+    # Dynamically start, update, or stop background drop folder watcher
+    from backend.services.watcher_manager import drop_folder_watcher_manager
+    await drop_folder_watcher_manager.sync_with_config()
+
     return cfg.preferences
 
 
@@ -203,6 +208,11 @@ async def scan_drop_folder():
         library_path=Path(active_lib.path),
         import_dir=drop_path,
         library_id=active_lib.id,
+        conflict_action=cfg.preferences.auto_import_action,
+        delete_source_after_import=cfg.preferences.delete_source_after_import,
+        auto_download_metadata=cfg.preferences.auto_download_metadata,
+        auto_index_rag=cfg.preferences.auto_index_rag,
+        auto_generate_summary=cfg.preferences.auto_generate_summary,
     )
 
     jobs = await watcher.scan_once()

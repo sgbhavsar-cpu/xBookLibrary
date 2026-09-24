@@ -72,6 +72,9 @@ async def switch_library(library_id: str):
     """Sets the active library."""
     lib_mgr = LibraryManager()
     try:
-        return lib_mgr.switch_active_library(library_id)
+        lib = lib_mgr.switch_active_library(library_id)
+        from backend.services.watcher_manager import drop_folder_watcher_manager
+        await drop_folder_watcher_manager.sync_with_config()
+        return lib
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e

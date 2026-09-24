@@ -32,7 +32,17 @@ from backend.api.taxonomies_router import router as taxonomies_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup and shutdown events."""
+    import logging
+    from backend.services.watcher_manager import drop_folder_watcher_manager
+    try:
+        await drop_folder_watcher_manager.sync_with_config()
+    except Exception as e:
+        logging.getLogger(__name__).error("Failed to start drop folder watcher on startup: %s", e)
     yield
+    try:
+        await drop_folder_watcher_manager.stop()
+    except Exception as e:
+        logging.getLogger(__name__).error("Error stopping drop folder watcher on shutdown: %s", e)
 
 
 app = FastAPI(

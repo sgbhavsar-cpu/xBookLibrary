@@ -239,6 +239,17 @@ async def upload_books(
             book = await ingestion_service.ingest_file(temp_file, conflict_action=conflict_action)
             ingested_books.append(book)
 
+            # Trigger automated post-ingestion workflows (metadata, RAG, summary)
+            import asyncio
+            from backend.services.post_ingestion import trigger_post_ingestion_pipeline
+            asyncio.create_task(
+                trigger_post_ingestion_pipeline(
+                    book_id=book.id,
+                    library_path=Path(active_lib.path),
+                    library_id=active_lib.id,
+                )
+            )
+
     return ingested_books
 
 

@@ -550,6 +550,10 @@ export interface UserPreferences {
   auto_import_folder?: string;
   auto_import_enabled: boolean;
   auto_import_action: 'skip' | 'create_new' | 'merge';
+  delete_source_after_import?: boolean;
+  auto_download_metadata?: boolean;
+  auto_index_rag?: boolean;
+  auto_generate_summary?: boolean;
   opds_enabled: boolean;
   opds_port: number;
   smtp_settings?: {

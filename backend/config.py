@@ -28,6 +28,12 @@ class UserPreferences(BaseModel):
     auto_import_folder: Optional[str] = None
     auto_import_enabled: bool = False
     auto_import_action: str = "merge"  # "skip" | "create_new" | "merge"
+    delete_source_after_import: bool = True  # Automatically delete file from drop folder after successful import
+
+    # Automated Post-Ingestion Processing
+    auto_download_metadata: bool = False  # Auto-download metadata from Google Books / OpenLibrary on import
+    auto_index_rag: bool = False  # Auto-index book into LanceDB for RAG library chat on import
+    auto_generate_summary: bool = False  # Auto-generate AI multi-resolution summary on import
 
     # Sharing & Network
     opds_enabled: bool = True
