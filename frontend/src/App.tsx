@@ -46,6 +46,8 @@ export const App: React.FC = () => {
     selectedBookIds,
     toastMessage,
     setToastMessage,
+    closeAudiobookPlayer,
+    syncAudioProgress,
   } = useStore();
 
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -117,8 +119,13 @@ export const App: React.FC = () => {
       const activeTag = document.activeElement?.tagName.toLowerCase();
       if (activeTag === 'input' || activeTag === 'textarea') return;
 
-      // Escape -> Clear selected books
+      // Escape -> Close audiobook player if open, else clear selected books
       if (e.key === 'Escape') {
+        if (isAudiobookPlayerOpen) {
+          syncAudioProgress();
+          closeAudiobookPlayer();
+          return;
+        }
         if (selectedBookIds.length > 0 || selectedBook) {
           clearSelectedBooks();
         }
@@ -162,6 +169,9 @@ export const App: React.FC = () => {
     isEditMetadataOpen,
     isBulkEditOpen,
     readerBookId,
+    isAudiobookPlayerOpen,
+    closeAudiobookPlayer,
+    syncAudioProgress,
     setEditMetadataOpen,
     setBulkEditOpen,
     openConversionModal,

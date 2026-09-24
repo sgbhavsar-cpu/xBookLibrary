@@ -69,6 +69,20 @@ export const AudiobookPlayer: React.FC = () => {
     }
   }, [audioPlayback.currentTime, activeTab]);
 
+  // Global Escape key listener: closes any book open for listening
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        syncAudioProgress();
+        closeAudiobookPlayer();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [closeAudiobookPlayer, syncAudioProgress]);
+
   if (!activeAudiobook || !activeLibraryId) {
     return null;
   }

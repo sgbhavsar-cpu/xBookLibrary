@@ -149,7 +149,8 @@ export const api = {
   },
 
   getBookDownloadUrl(bookId: number, format: string): string {
-    return `/api/books/${bookId}/download/${format.toUpperCase()}`;
+    const ext = format.toLowerCase().replace(/^\./, '');
+    return `/api/books/${bookId}/download/book.${ext}`;
   },
 
   // Taxonomies

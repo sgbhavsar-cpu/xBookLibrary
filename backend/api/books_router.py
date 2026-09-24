@@ -147,7 +147,7 @@ async def download_book_format(book_id: int, format_name: str):
     if not db_path.exists():
         raise HTTPException(status_code=404, detail="Library database not found")
 
-    fmt = format_name.upper()
+    fmt = format_name.split(".")[-1].upper()
     import aiosqlite
 
     async with aiosqlite.connect(db_path) as db:

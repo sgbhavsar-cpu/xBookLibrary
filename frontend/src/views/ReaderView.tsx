@@ -51,6 +51,19 @@ export const ReaderView: React.FC = () => {
       .catch((err) => console.error('Failed to load reader book:', err));
   }, [readerBookId]);
 
+  // Global Escape key listener: closes any book open for reading
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        closeReader();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [closeReader]);
+
   const fmt = (readerFormat || 'EPUB').toUpperCase();
   const isAudio = fmt === 'M4B' || fmt === 'MP3';
   const isEpub = fmt === 'EPUB';

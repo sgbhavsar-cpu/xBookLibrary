@@ -38,12 +38,14 @@ export const EpubReader: React.FC<EpubReaderProps> = ({
     saveProgress,
     addAnnotation,
     toggleReaderAI,
+    closeReader,
   } = useStore();
 
   const viewerRef = useRef<HTMLDivElement>(null);
   const bookRef = useRef<EpubBookInstance | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [popover, setPopover] = useState<SelectionPopover | null>(null);
   const [noteInput, setNoteInput] = useState<string>('');
   const [showNoteInput, setShowNoteInput] = useState<boolean>(false);
@@ -65,96 +67,147 @@ export const EpubReader: React.FC<EpubReaderProps> = ({
     black: { bg: '#000000', text: '#e2e8f0' },
   }[readerTheme];
 
+  // Listen for Escape key on window
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeReader();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [closeReader]);
+
   useEffect(() => {
     if (!viewerRef.current) return;
 
-    // Clear previous rendition if layout changes
-    if (renditionRef.current) {
+    let isCancelled = false;
+    setIsLoaded(false);
+    setError(null);
+
+    // Destroy previous book instance if any
+    try {
+      bookRef.current?.destroy();
+    } catch (e) {}
+
+    const downloadUrl = api.getBookDownloadUrl(bookId, 'EPUB');
+
+    // Fetch EPUB as ArrayBuffer so epubjs unpacks the zip binary in-memory
+    fetch(downloadUrl)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: Failed to download book`);
+        }
+        return res.arrayBuffer();
+      })
+      .then((buffer) => {
+        if (isCancelled || !viewerRef.current) return;
+
+        viewerRef.current.innerHTML = '';
+
+        const ePubFn = typeof ePub === 'function' ? ePub : (ePub as any).default || ePub;
+        const book = ePubFn(buffer);
+        bookRef.current = book;
+
+        const rendition = book.renderTo(viewerRef.current, {
+          width: '100%',
+          height: '100%',
+          flow: readerLayout === 'scrolled' ? 'scrolled-doc' : 'paginated',
+          spread: 'auto',
+        });
+        renditionRef.current = rendition;
+
+        // Apply styles
+        rendition.themes.default({
+          body: {
+            background: `${themeColors.bg} !important`,
+            color: `${themeColors.text} !important`,
+            'font-size': `${readerFontSize}px !important`,
+            'line-height': '1.7 !important',
+            'font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", Georgia, serif !important',
+          },
+          p: {
+            'margin-bottom': '1.2em !important',
+          },
+          '::selection': {
+            background: 'rgba(99, 102, 241, 0.3) !important',
+          },
+        });
+
+        // Determine initial location (backend progress takes precedence over localStorage)
+        const initialLocation =
+          targetLocation ||
+          readerProgress?.location ||
+          localStorage.getItem(`xbook_progress_${bookId}`) ||
+          undefined;
+
+        rendition.display(initialLocation).then(() => {
+          if (!isCancelled) {
+            setIsLoaded(true);
+          }
+        }).catch(() => {
+          // If CFI was invalid or mismatch, fallback to first chapter
+          rendition.display().then(() => {
+            if (!isCancelled) {
+              setIsLoaded(true);
+            }
+          });
+        });
+
+        // Locations generation for percentage calculation
+        book.ready.then(() => {
+          book.locations.generate(1024).then(() => {
+            rendition.on('relocated', (location: any) => {
+              if (location && location.start) {
+                const percent = Math.round(book.locations.percentageFromCfi(location.start.cfi) * 100);
+                localStorage.setItem(`xbook_progress_${bookId}`, location.start.cfi);
+                if (onProgressUpdate) {
+                  onProgressUpdate(percent);
+                }
+                saveProgress(location.start.cfi, percent, 5);
+              }
+            });
+          }).catch((err: any) => console.warn('Location generation skipped:', err));
+        });
+
+        // Selection listener for highlights
+        rendition.on('selected', (cfiRange: string, _contents: any) => {
+          book.getRange(cfiRange).then((range: Range) => {
+            const text = range.toString().trim();
+            if (!text) return;
+            const rect = range.getBoundingClientRect();
+            setPopover({
+              cfiRange,
+              text,
+              x: Math.min(window.innerWidth - 260, Math.max(20, rect.left)),
+              y: Math.max(60, rect.top - 50),
+            });
+            setShowNoteInput(false);
+          });
+        });
+
+        // Keyboard navigation inside iframe: handles Arrow keys AND Escape key
+        rendition.on('keydown', (e: KeyboardEvent) => {
+          if (e.key === 'Escape') {
+            closeReader();
+            return;
+          }
+          if (e.key === 'ArrowRight') rendition.next();
+          if (e.key === 'ArrowLeft') rendition.prev();
+        });
+      })
+      .catch((err: any) => {
+        if (!isCancelled) {
+          console.error('Failed to load EPUB:', err);
+          setError(err.message || 'Failed to open book');
+        }
+      });
+
+    return () => {
+      isCancelled = true;
       try {
         bookRef.current?.destroy();
       } catch (e) {}
-    }
-
-    const downloadUrl = api.getBookDownloadUrl(bookId, 'EPUB');
-    const book = ePub(downloadUrl);
-    bookRef.current = book;
-
-    const rendition = book.renderTo(viewerRef.current, {
-      width: '100%',
-      height: '100%',
-      flow: readerLayout === 'scrolled' ? 'scrolled-doc' : 'paginated',
-      spread: 'auto',
-    });
-    renditionRef.current = rendition;
-
-    // Apply styles
-    rendition.themes.default({
-      body: {
-        background: `${themeColors.bg} !important`,
-        color: `${themeColors.text} !important`,
-        'font-size': `${readerFontSize}px !important`,
-        'line-height': '1.7 !important',
-        'font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", Georgia, serif !important',
-      },
-      p: {
-        'margin-bottom': '1.2em !important',
-      },
-      '::selection': {
-        background: 'rgba(99, 102, 241, 0.3) !important',
-      },
-    });
-
-    // Determine initial location (backend progress takes precedence over localStorage)
-    const initialLocation =
-      targetLocation ||
-      readerProgress?.location ||
-      localStorage.getItem(`xbook_progress_${bookId}`) ||
-      undefined;
-
-    rendition.display(initialLocation).then(() => {
-      setIsLoaded(true);
-    });
-
-    // Locations generation for percentage calculation
-    book.ready.then(() => {
-      book.locations.generate(1024).then(() => {
-        rendition.on('relocated', (location: any) => {
-          if (location && location.start) {
-            const percent = Math.round(book.locations.percentageFromCfi(location.start.cfi) * 100);
-            localStorage.setItem(`xbook_progress_${bookId}`, location.start.cfi);
-            if (onProgressUpdate) {
-              onProgressUpdate(percent);
-            }
-            saveProgress(location.start.cfi, percent, 5);
-          }
-        });
-      });
-    });
-
-    // Selection listener for highlights
-    rendition.on('selected', (cfiRange: string, _contents: any) => {
-      book.getRange(cfiRange).then((range: Range) => {
-        const text = range.toString().trim();
-        if (!text) return;
-        const rect = range.getBoundingClientRect();
-        setPopover({
-          cfiRange,
-          text,
-          x: Math.min(window.innerWidth - 260, Math.max(20, rect.left)),
-          y: Math.max(60, rect.top - 50),
-        });
-        setShowNoteInput(false);
-      });
-    });
-
-    // Keyboard navigation inside iframe
-    rendition.on('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') rendition.next();
-      if (e.key === 'ArrowLeft') rendition.prev();
-    });
-
-    return () => {
-      book.destroy();
     };
   }, [bookId, readerLayout]);
 
@@ -239,9 +292,38 @@ export const EpubReader: React.FC<EpubReaderProps> = ({
         }}
       />
 
-      {!isLoaded && (
-        <div style={{ position: 'absolute', color: themeColors.text, fontSize: '13px' }}>
-          Loading book text...
+      {!isLoaded && !error && (
+        <div style={{ position: 'absolute', color: themeColors.text, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '16px', height: '16px', border: '2px solid rgba(125,125,125,0.3)', borderTopColor: 'var(--accent-primary, #6366f1)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <span>Loading book text...</span>
+        </div>
+      )}
+
+      {error && (
+        <div
+          style={{
+            position: 'absolute',
+            color: '#ef4444',
+            fontSize: '13.5px',
+            background: 'rgba(15, 23, 42, 0.95)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            padding: '16px 24px',
+            borderRadius: '10px',
+            textAlign: 'center',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+            maxWidth: '420px',
+            zIndex: 10,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: '6px' }}>Unable to load EPUB</div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '12px' }}>{error}</div>
+          <button
+            className="btn btn-secondary"
+            onClick={closeReader}
+            style={{ fontSize: '12px', padding: '4px 12px' }}
+          >
+            Return to Library (Esc)
+          </button>
         </div>
       )}
 
